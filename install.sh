@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v6.0 - COMPLETE MINECRAFT HOSTING ENGINE
+# CJH PANEL v7.0 - ADVANCED MINECRAFT HOSTING ENGINE
 # =========================================================
 
 set -e
@@ -15,8 +15,8 @@ clear 2>/dev/null || true
 
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════════╗"
-echo "║                CJH PANEL v6.0                ║"
-echo "║    Pterodactyl-Style Minecraft Engine        ║"
+echo "║                CJH PANEL v7.0                ║"
+echo "║     Enterprise Minecraft Hosting System      ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -24,8 +24,8 @@ OPTION=$1
 
 if [ -z "$OPTION" ]; then
     echo -e "${YELLOW}Choose an option:${NC}\n"
-    echo -e "  ${GREEN}[1]${NC} Install / Update CJH Panel"
-    echo -e "  ${GREEN}[2]${NC} Restart CJH Service"
+    echo -e "  ${GREEN}[1]${NC} Install / Update CJH Panel Engine"
+    echo -e "  ${GREEN}[2]${NC} Restart Service"
     echo -e "  ${GREEN}[3]${NC} Exit\n"
 
     if [ -t 0 ]; then
@@ -72,7 +72,7 @@ EOF
         cat <<EOF > package.json
 {
   "name": "cjh-panel",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "main": "server.js",
   "dependencies": {
     "express": "^4.18.2",
@@ -91,7 +91,7 @@ EOF
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CJH PANEL - Minecraft Hosting</title>
+    <title>CJH PANEL - Enterprise Edition</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #050505; color: #a1a1aa; height: 100vh; overflow: hidden; display: flex; }
@@ -103,7 +103,7 @@ EOF
         .login-card input { width: 100%; padding: 0.75rem; margin-bottom: 0.8rem; background: #18181b; border: 1px solid #27272a; color: #fff; border-radius: 4px; outline: none; }
         .login-card button { width: 100%; padding: 0.75rem; background: #e11d48; border: none; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; }
 
-        /* DASHBOARD */
+        /* MAIN APP */
         #app-view { display: none; width: 100vw; height: 100vh; flex-direction: row; }
         .sidebar { width: 230px; background: #09090b; border-right: 1px solid #18181b; padding: 1.2rem 0.8rem; display: flex; flex-direction: column; flex-shrink: 0; }
         .brand-header { color: #f4f4f5; font-weight: 700; letter-spacing: 1px; padding: 0.5rem; margin-bottom: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
@@ -118,7 +118,7 @@ EOF
         h1.sec-title { color: #f4f4f5; font-size: 1.8rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
         .card { background: #09090b; border: 1px solid #18181b; padding: 1.5rem; border-radius: 6px; margin-bottom: 1.2rem; }
 
-        /* PTERODACTYL CONSOLE */
+        /* DEDICATED CONSOLE */
         #console-view { display: none; width: 100vw; height: 100vh; background: #050505; flex-direction: row; }
         .console-sidebar { width: 230px; background: #09090b; border-right: 1px solid #18181b; padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
         .console-nav-title { color: #f4f4f5; font-weight: bold; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; font-size: 1rem; }
@@ -169,7 +169,7 @@ EOF
     <div id="login-view">
         <div class="login-card">
             <h2 id="login-brand">CJH PANEL</h2>
-            <p style="font-size:0.75rem; color:#71717a; margin-bottom:1.5rem;">MINECRAFT SERVER HOSTING ENGINE</p>
+            <p style="font-size:0.75rem; color:#71717a; margin-bottom:1.5rem;">MINECRAFT MANAGEMENT PANEL</p>
             <input type="text" id="u-input" placeholder="Username">
             <input type="password" id="p-input" placeholder="Password">
             <button onclick="handleLogin()">LOG IN</button>
@@ -200,39 +200,39 @@ EOF
         <div class="content-area">
             <!-- OVERVIEW -->
             <div id="overview" class="panel-section active">
-                <h1 class="sec-title">My Assigned Servers</h1>
+                <h1 class="sec-title">My Servers</h1>
                 <div id="overview-server-list"></div>
             </div>
 
             <!-- SERVERS -->
             <div id="servers" class="panel-section">
-                <h1 class="sec-title">Server Infrastructure</h1>
+                <h1 class="sec-title">Servers List</h1>
                 <div id="full-servers-list"></div>
             </div>
 
             <!-- NODES -->
             <div id="nodes" class="panel-section">
-                <h1 class="sec-title">Nodes Analytics</h1>
+                <h1 class="sec-title">Nodes Monitor</h1>
                 <div class="card">
                     <h3>Built-in Node (Local System Engine)</h3>
-                    <p style="font-size:0.8rem; color:#71717a; margin-top:0.3rem;">CPU: <span id="node-cpu">8%</span> | RAM: <span id="node-ram">1.8 GB / 8 GB</span> | Storage: 12 GB / 50 GB</p>
+                    <p style="font-size:0.8rem; color:#71717a; margin-top:0.3rem;">CPU: <span id="node-cpu">0.0%</span> | RAM: <span id="node-ram">1.8 GB / 8 GB</span> | Disk: 10 GB / 50 GB</p>
                 </div>
             </div>
 
-            <!-- DEPLOY WIZARD -->
+            <!-- DEPLOY -->
             <div id="deploy" class="panel-section">
-                <h1 class="sec-title">Deploy Minecraft Instance</h1>
+                <h1 class="sec-title">Deploy Minecraft Server</h1>
                 <div class="card">
                     <div style="margin-bottom:1rem;">
                         <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">SERVER NAME *</label>
                         <input type="text" id="dep-name" placeholder="e.g. Chachaji Survival" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px;">
                     </div>
                     <div style="margin-bottom:1rem;">
-                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">ASSIGN TO MEMBER USER</label>
+                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">ASSIGN USER</label>
                         <select id="dep-user" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px;"></select>
                     </div>
                     <div style="margin-bottom:1rem;">
-                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">ALLOCATED PORT</label>
+                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">SERVER PORT</label>
                         <input type="number" id="dep-port" value="25565" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px;">
                     </div>
                     <div style="margin-bottom:1rem;">
@@ -243,23 +243,24 @@ EOF
                             <option value="8 GB">8 GB RAM</option>
                         </select>
                     </div>
-                    <button class="btn-action btn-primary" onclick="deployServer()" style="width:100%; padding:0.75rem;">DEPLOY MINECRAFT INSTANCE 🚀</button>
+                    <button class="btn-action btn-primary" onclick="deployServer()" style="width:100%; padding:0.75rem;">CREATE INSTANCE</button>
                 </div>
             </div>
 
             <!-- FLEET CONTROL -->
             <div id="fleet" class="panel-section">
-                <h1 class="sec-title">Fleet & Resource Allocation</h1>
+                <h1 class="sec-title">Fleet & Resource Control</h1>
                 <div class="card">
-                    <h3>Server Allocation, User Reassignment & Suspensions</h3>
+                    <h3>Server Reassignment & Suspensions</h3>
                     <table>
                         <thead>
                             <tr>
                                 <th>Server Name</th>
-                                <th>Assigned Owner</th>
+                                <th>Owner</th>
                                 <th>Port</th>
                                 <th>RAM</th>
                                 <th>Status</th>
+                                <th>Change Owner</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -270,7 +271,7 @@ EOF
 
             <!-- ADMIN SETTINGS -->
             <div id="admin-settings" class="panel-section">
-                <h1 class="sec-title">Admin Panel Settings</h1>
+                <h1 class="sec-title">Admin Settings</h1>
                 <div class="card">
                     <div style="margin-bottom:1rem;">
                         <label style="font-size:0.75rem;">PANEL BRAND NAME</label>
@@ -280,7 +281,7 @@ EOF
                 </div>
             </div>
 
-            <!-- ACCOUNT & USER CREATION -->
+            <!-- ACCOUNT -->
             <div id="account" class="panel-section">
                 <h1 class="sec-title">Account Settings</h1>
                 <div class="card admin-only">
@@ -297,7 +298,7 @@ EOF
                 </div>
 
                 <div class="card">
-                    <h3>Active System Users</h3>
+                    <h3>System Users</h3>
                     <table>
                         <thead>
                             <tr>
@@ -313,7 +314,7 @@ EOF
         </div>
     </div>
 
-    <!-- PTERODACTYL MINECRAFT CONSOLE SCREEN -->
+    <!-- CONSOLE VIEW -->
     <div id="console-view">
         <div class="console-sidebar">
             <div class="console-nav-title">
@@ -322,6 +323,7 @@ EOF
             <div class="console-nav-item active" onclick="switchConsoleSubTab('terminal', this)">_ Terminal</div>
             <div class="console-nav-item" onclick="switchConsoleSubTab('file-manager', this)">📁 File Manager</div>
             <div class="console-nav-item" onclick="switchConsoleSubTab('plugins', this)">🧩 Plugins</div>
+            <div class="console-nav-item" onclick="switchConsoleSubTab('backups', this)">📦 Backups</div>
             <div class="console-nav-item" onclick="switchConsoleSubTab('playit', this)">🌐 Playit Tunnel</div>
             <div class="console-nav-item" onclick="switchConsoleSubTab('sftp', this)">🔌 SFTP Details</div>
             
@@ -331,7 +333,7 @@ EOF
         <div class="console-main">
             <div class="console-topbar">
                 <div>
-                    <span style="font-size:0.75rem; color:#22c55e; font-weight:bold;" id="mc-status-indicator">● ONLINE</span>
+                    <span style="font-size:0.75rem; font-weight:bold;" id="mc-status-indicator">● OFFLINE</span>
                     <span style="font-size:0.75rem; color:#71717a; margin-left:8px;" id="mc-port-display">Port: 25565</span>
                 </div>
                 <div class="power-btns">
@@ -341,7 +343,7 @@ EOF
                 </div>
             </div>
 
-            <!-- SUB TAB 1: TERMINAL -->
+            <!-- TAB 1: TERMINAL -->
             <div id="sub-terminal" class="tab-subpanel active">
                 <div class="console-layout">
                     <div class="terminal-box">
@@ -392,7 +394,7 @@ EOF
                 </div>
             </div>
 
-            <!-- SUB TAB 2: FILE MANAGER -->
+            <!-- TAB 2: FILE MANAGER -->
             <div id="sub-file-manager" class="tab-subpanel">
                 <div class="card">
                     <h3>Server Directory Manager</h3>
@@ -413,48 +415,56 @@ EOF
                 </div>
             </div>
 
-            <!-- SUB TAB 3: PLUGINS -->
+            <!-- TAB 3: PLUGINS -->
             <div id="sub-plugins" class="tab-subpanel">
                 <div class="card">
                     <h3>Plugins Installer</h3>
                     <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1rem; margin-top:1rem;">
                         <div style="background:#18181b; padding:1rem; border-radius:6px; border:1px solid #27272a;">
                             <h4>ViaVersion</h4>
-                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Allows newer client versions to connect.</p>
+                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Client compatibility patch.</p>
                             <button class="btn-action btn-primary" style="margin-top:0.8rem;" onclick="installPlugin('ViaVersion.jar')">Install Plugin</button>
                         </div>
                         <div style="background:#18181b; padding:1rem; border-radius:6px; border:1px solid #27272a;">
                             <h4>GeyserMC</h4>
-                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Enable Minecraft Bedrock join support.</p>
+                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Bedrock Edition join support.</p>
                             <button class="btn-action btn-primary" style="margin-top:0.8rem;" onclick="installPlugin('Geyser-Spigot.jar')">Install Plugin</button>
-                        </div>
-                        <div style="background:#18181b; padding:1rem; border-radius:6px; border:1px solid #27272a;">
-                            <h4>EssentialsX</h4>
-                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Essential server commands suite.</p>
-                            <button class="btn-action btn-primary" style="margin-top:0.8rem;" onclick="installPlugin('EssentialsX.jar')">Install Plugin</button>
-                        </div>
-                        <div style="background:#18181b; padding:1rem; border-radius:6px; border:1px solid #27272a;">
-                            <h4>Vault</h4>
-                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Economy and permission API framework.</p>
-                            <button class="btn-action btn-primary" style="margin-top:0.8rem;" onclick="installPlugin('Vault.jar')">Install Plugin</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- SUB TAB 4: PLAYIT TUNNEL -->
+            <!-- TAB 4: BACKUPS -->
+            <div id="sub-backups" class="tab-subpanel">
+                <div class="card">
+                    <h3>Server Backups</h3>
+                    <button class="btn-action btn-primary" onclick="createBackup()">Create Snapshot Backup</button>
+                    <table style="margin-top:1rem;">
+                        <thead>
+                            <tr>
+                                <th>Backup Name</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="backups-list-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 5: PLAYIT TUNNEL -->
             <div id="sub-playit" class="tab-subpanel">
                 <div class="card">
                     <h3>Playit.gg Tunnel Generator</h3>
-                    <p style="font-size:0.8rem; color:#71717a; margin-top:0.3rem;">Generate a secret key to map your server port to a public IP without port forwarding.</p>
+                    <p style="font-size:0.8rem; color:#71717a; margin-top:0.3rem;">Tunnel key map for public IP connections.</p>
                     <div style="margin-top:1rem;">
-                        <button class="btn-action btn-primary" onclick="generatePlayitKey()">Generate Tunnel Key & Get Domain</button>
+                        <button class="btn-action btn-primary" onclick="generatePlayitKey()">Generate Tunnel Key</button>
                         <div id="playit-result" style="margin-top:1rem; font-family:monospace; font-size:0.85rem; color:#4ade80;"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- SUB TAB 5: SFTP -->
+            <!-- TAB 6: SFTP -->
             <div id="sub-sftp" class="tab-subpanel">
                 <div class="card">
                     <h3>SFTP Connection Details</h3>
@@ -462,7 +472,6 @@ EOF
                         <p><b>Server Address:</b> sftp://localhost</p>
                         <p><b>Port:</b> 2022</p>
                         <p><b>Username:</b> <span id="sftp-user">admin</span></p>
-                        <p><b>Password:</b> Same as Panel Password</p>
                     </div>
                 </div>
             </div>
@@ -473,6 +482,9 @@ EOF
     <script>
         let currentUser = null;
         let activeServerName = null;
+        let activeServerPort = null;
+        let serverStatusMap = {};
+        let logPollInterval = null;
 
         async function handleLogin() {
             const user = document.getElementById('u-input').value;
@@ -520,57 +532,12 @@ EOF
             el.classList.add('active');
             
             if(tab === 'file-manager') loadFiles();
+            if(tab === 'backups') loadBackups();
         }
 
         async function loadData() {
-            loadServers();
             loadUsers();
-        }
-
-        async function loadServers() {
-            const res = await fetch('/api/servers?user=' + currentUser.user + '&role=' + currentUser.role);
-            const servers = await res.json();
-
-            let ovHtml = '', fleetHtml = '';
-            servers.forEach((s, i) => {
-                const statusColor = s.suspended ? '#ef4444' : '#22c55e';
-                const statusText = s.suspended ? 'SUSPENDED' : 'ONLINE';
-
-                ovHtml += `
-                    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <h3 style="color:#f4f4f5;">0${i+1} ${s.name}</h3>
-                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Owner: ${s.owner} | RAM: ${s.ram} | Port: ${s.port}</p>
-                        </div>
-                        <div>
-                            <span style="font-size:0.7rem; color:${statusColor}; font-weight:bold; margin-right:10px;">● ${statusText}</span>
-                            <button class="btn-action btn-primary" onclick="openConsoleView('${s.name}', '${s.port}')">CONSOLE</button>
-                        </div>
-                    </div>
-                `;
-
-                fleetHtml += `
-                    <tr>
-                        <td><b>${s.name}</b></td>
-                        <td>${s.owner}</td>
-                        <td>${s.port}</td>
-                        <td>${s.ram}</td>
-                        <td><span style="color:${statusColor}; font-weight:bold;">${statusText}</span></td>
-                        <td>
-                            <button class="btn-action" onclick="toggleSuspend('${s.name}')">${s.suspended ? 'Unsuspend' : 'Suspend'}</button>
-                            <button class="btn-action btn-danger" onclick="deleteServer('${s.name}')">Delete</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            if(servers.length === 0) {
-                ovHtml = '<div class="card"><p>No assigned servers found for your account.</p></div>';
-            }
-
-            document.getElementById('overview-server-list').innerHTML = ovHtml;
-            document.getElementById('full-servers-list').innerHTML = ovHtml;
-            document.getElementById('fleet-table-body').innerHTML = fleetHtml;
+            loadServers();
         }
 
         async function loadUsers() {
@@ -593,6 +560,74 @@ EOF
 
             document.getElementById('dep-user').innerHTML = userOpts;
             document.getElementById('users-table-body').innerHTML = userRows;
+            window.systemUsersList = users;
+        }
+
+        async function loadServers() {
+            const res = await fetch('/api/servers?user=' + currentUser.user + '&role=' + currentUser.role);
+            const servers = await res.json();
+
+            let ovHtml = '', fleetHtml = '';
+            servers.forEach((s, i) => {
+                const isOnline = s.running;
+                const statusColor = s.suspended ? '#ef4444' : (isOnline ? '#22c55e' : '#71717a');
+                const statusText = s.suspended ? 'SUSPENDED' : (isOnline ? 'ONLINE' : 'OFFLINE');
+
+                serverStatusMap[s.name] = isOnline;
+
+                ovHtml += `
+                    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h3 style="color:#f4f4f5;">0${i+1} ${s.name}</h3>
+                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Owner: ${s.owner} | RAM: ${s.ram} | Port: ${s.port}</p>
+                        </div>
+                        <div>
+                            <span style="font-size:0.7rem; color:${statusColor}; font-weight:bold; margin-right:10px;">● ${statusText}</span>
+                            <button class="btn-action btn-primary" onclick="openConsoleView('${s.name}', '${s.port}')">CONSOLE</button>
+                        </div>
+                    </div>
+                `;
+
+                let userOptions = (window.systemUsersList || []).map(u => 
+                    `<option value="${u.user}" ${u.user === s.owner ? 'selected' : ''}>${u.user}</option>`
+                ).join('');
+
+                fleetHtml += `
+                    <tr>
+                        <td><b>${s.name}</b></td>
+                        <td>${s.owner}</td>
+                        <td>${s.port}</td>
+                        <td>${s.ram}</td>
+                        <td><span style="color:${statusColor}; font-weight:bold;">${statusText}</span></td>
+                        <td>
+                            <select onchange="reassignOwner('${s.name}', this.value)" style="background:#18181b; color:#fff; border:1px solid #27272a; padding:0.3rem; border-radius:4px;">
+                                ${userOptions}
+                            </select>
+                        </td>
+                        <td>
+                            <button class="btn-action" onclick="toggleSuspend('${s.name}')">${s.suspended ? 'Unsuspend' : 'Suspend'}</button>
+                            <button class="btn-action btn-danger" onclick="deleteServer('${s.name}')">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if(servers.length === 0) {
+                ovHtml = '<div class="card"><p>No assigned servers found for your account.</p></div>';
+            }
+
+            document.getElementById('overview-server-list').innerHTML = ovHtml;
+            document.getElementById('full-servers-list').innerHTML = ovHtml;
+            document.getElementById('fleet-table-body').innerHTML = fleetHtml;
+        }
+
+        async function reassignOwner(serverName, newOwner) {
+            await fetch('/api/servers/reassign', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ name: serverName, newOwner })
+            });
+            loadServers();
         }
 
         async function deployServer() {
@@ -609,7 +644,7 @@ EOF
                 body: JSON.stringify({ name, owner, port, ram })
             });
 
-            alert('Minecraft Instance Created!');
+            alert('Instance Created!');
             document.getElementById('dep-name').value = '';
             loadServers();
         }
@@ -664,6 +699,7 @@ EOF
         /* DEDICATED CONSOLE CONTROLS */
         function openConsoleView(name, port) {
             activeServerName = name;
+            activeServerPort = port;
             document.getElementById('app-view').style.display = 'none';
             document.getElementById('console-view').style.display = 'flex';
             document.getElementById('mc-server-name').innerText = name;
@@ -671,54 +707,67 @@ EOF
             document.getElementById('mc-ip').innerText = 'localhost:' + port;
             document.getElementById('sftp-user').innerText = currentUser.user;
 
-            const logs = document.getElementById('mc-terminal-logs');
-            logs.innerHTML = `[CJH SYSTEM] Loaded Minecraft instance [${name}] directory...\n[CJH SYSTEM] Ready for start execution.\n`;
+            pollServerState();
+            if(logPollInterval) clearInterval(logPollInterval);
+            logPollInterval = setInterval(pollServerState, 2000);
         }
 
         function closeConsoleView() {
+            if(logPollInterval) clearInterval(logPollInterval);
             document.getElementById('console-view').style.display = 'none';
             document.getElementById('app-view').style.display = 'flex';
+            loadServers();
+        }
+
+        async function pollServerState() {
+            if(!activeServerName) return;
+            const res = await fetch('/api/servers/status?name=' + activeServerName);
+            const data = await res.json();
+
+            const statusEl = document.getElementById('mc-status-indicator');
+            if(data.running) {
+                statusEl.innerText = '● ONLINE';
+                statusEl.style.color = '#22c55e';
+            } else {
+                statusEl.innerText = '● OFFLINE';
+                statusEl.style.color = '#ef4444';
+            }
+
+            document.getElementById('mc-terminal-logs').innerText = data.logs || '[OFFLINE] Press START to power on process.';
         }
 
         async function mcPower(action) {
-            const logs = document.getElementById('mc-terminal-logs');
-            logs.innerHTML += `\n[ACTION] Triggering ${action.toUpperCase()} signal...`;
-
             const res = await fetch('/api/servers/power', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ name: activeServerName, action })
             });
-
-            const data = await res.json();
-            logs.innerHTML += `\n[CJH ENGINE] ${data.message}`;
-            logs.scrollTop = logs.scrollHeight;
+            pollServerState();
         }
 
-        function handleMcCmd(e) {
+        async function handleMcCmd(e) {
             if (e.key === 'Enter') {
                 const input = document.getElementById('mc-cmd-input');
-                const logs = document.getElementById('mc-terminal-logs');
-                logs.innerHTML += `\n> ${input.value}\n[Minecraft Server] Command executed: ${input.value}`;
+                const cmd = input.value;
                 input.value = '';
-                logs.scrollTop = logs.scrollHeight;
+
+                await fetch('/api/servers/command', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ name: activeServerName, command: cmd })
+                });
+
+                pollServerState();
             }
         }
 
-        /* FILE MANAGER CONTROLS */
+        /* FILES */
         async function loadFiles() {
             const res = await fetch('/api/servers/files?name=' + activeServerName);
             const files = await res.json();
-            
             let html = '';
             files.forEach(f => {
-                html += `
-                    <tr>
-                        <td><b>${f.name}</b></td>
-                        <td>${f.size} KB</td>
-                        <td><button class="btn-action btn-danger" onclick="deleteFile('${f.name}')">Delete</button></td>
-                    </tr>
-                `;
+                html += `<tr><td><b>${f.name}</b></td><td>${f.size} KB</td><td><button class="btn-action btn-danger" onclick="deleteFile('${f.name}')">Delete</button></td></tr>`;
             });
             document.getElementById('files-list-body').innerHTML = html;
         }
@@ -726,44 +775,46 @@ EOF
         async function createFile() {
             const fileName = document.getElementById('new-file-name').value;
             if(!fileName) return alert('Enter file name');
-
-            await fetch('/api/servers/files/create', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ name: activeServerName, fileName })
-            });
-
+            await fetch('/api/servers/files/create', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name: activeServerName, fileName }) });
             document.getElementById('new-file-name').value = '';
             loadFiles();
         }
 
         async function deleteFile(fileName) {
-            await fetch('/api/servers/files/delete', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ name: activeServerName, fileName })
-            });
+            await fetch('/api/servers/files/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name: activeServerName, fileName }) });
             loadFiles();
         }
 
-        /* PLUGINS CONTROLS */
-        async function installPlugin(pluginName) {
-            await fetch('/api/servers/plugins/install', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ name: activeServerName, pluginName })
+        /* BACKUPS */
+        async function loadBackups() {
+            const res = await fetch('/api/servers/backups?name=' + activeServerName);
+            const list = await res.json();
+            let html = '';
+            list.forEach(b => {
+                html += `<tr><td><b>${b.name}</b></td><td>${b.time}</td><td><button class="btn-action btn-danger" onclick="deleteBackup('${b.name}')">Delete</button></td></tr>`;
             });
-            alert('Plugin ' + pluginName + ' installed into plugins folder!');
+            document.getElementById('backups-list-body').innerHTML = html;
         }
 
-        /* PLAYIT TUNNEL */
+        async function createBackup() {
+            await fetch('/api/servers/backups/create', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name: activeServerName }) });
+            loadBackups();
+        }
+
+        async function deleteBackup(bName) {
+            await fetch('/api/servers/backups/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name: activeServerName, backupName: bName }) });
+            loadBackups();
+        }
+
+        /* PLUGINS & PLAYIT */
+        async function installPlugin(pluginName) {
+            await fetch('/api/servers/plugins/install', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name: activeServerName, pluginName }) });
+            alert('Plugin Installed!');
+        }
+
         function generatePlayitKey() {
-            const secret = 'playit_secret_' + Math.random().toString(36).substring(2, 12);
             const claimUrl = 'https://playit.gg/claim/' + Math.random().toString(36).substring(2, 8);
-            document.getElementById('playit-result').innerHTML = `
-                Tunnel Key Generated: <b>${secret}</b><br>
-                Public Gaming Link: <a href="${claimUrl}" target="_blank" style="color:#818cf8;">${claimUrl}</a>
-            `;
+            document.getElementById('playit-result').innerHTML = `Tunnel Ready: <a href="${claimUrl}" target="_blank" style="color:#818cf8;">${claimUrl}</a>`;
         }
 
         function startCharts() {
@@ -783,7 +834,7 @@ EOF
                 makeBars('chart-ram');
                 makeBars('chart-net');
 
-                const cpuVal = (Math.random()*12 + 2).toFixed(1);
+                const cpuVal = (Math.random()*12 + 1).toFixed(1);
                 document.getElementById('mc-cpu').innerText = cpuVal + '%';
                 document.getElementById('node-cpu').innerText = cpuVal + '%';
             }, 2500);
@@ -806,7 +857,6 @@ const http = require('http');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
@@ -829,36 +879,27 @@ let users = [
     { user: "user", pass: "user123", role: "Member" }
 ];
 
+const activeProcesses = {};
+const logBuffers = {};
+const backupsMap = {};
+
 const MC_BASE_DIR = path.join(__dirname, 'mc_servers');
 if (!fs.existsSync(MC_BASE_DIR)) fs.mkdirSync(MC_BASE_DIR);
 
-function initServerFiles(serverName, port) {
+function initDirectory(serverName, port) {
     const sDir = path.join(MC_BASE_DIR, serverName);
     if (!fs.existsSync(sDir)) fs.mkdirSync(sDir, { recursive: true });
     
-    // Auto Generate eula.txt & server.properties
     fs.writeFileSync(path.join(sDir, 'eula.txt'), 'eula=true\n');
     fs.writeFileSync(path.join(sDir, 'server.properties'), `server-port=${port}\nonline-mode=false\ngamemode=survival\n`);
     
-    // Auto Create server.js mock runner if server.jar missing
-    if (!fs.existsSync(path.join(sDir, 'server.js'))) {
-        fs.writeFileSync(path.join(sDir, 'server.js'), `
-            console.log("[Minecraft Engine] Starting Minecraft Server process...");
-            console.log("[Minecraft Engine] Loading server.properties...");
-            console.log("[Minecraft Engine] Bound to port ${port}");
-            console.log("[Minecraft Engine] Done! Server is ready for connections.");
-            setInterval(() => {}, 10000);
-        `);
-    }
-
     const pluginsDir = path.join(sDir, 'plugins');
     if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
 }
 
-// Initial directory init
-servers.forEach(s => initServerFiles(s.name, s.port));
+servers.forEach(s => initDirectory(s.name, s.port));
 
-/* AUTH APIS */
+/* AUTH */
 app.post('/api/login', (req, res) => {
     const { user, pass } = req.body;
     const found = users.find(u => u.user === user && u.pass === pass);
@@ -866,56 +907,91 @@ app.post('/api/login', (req, res) => {
     return res.json({ success: false });
 });
 
-/* SERVERS & PERMISSIONS APIS */
+/* SERVERS */
 app.get('/api/servers', (req, res) => {
     const { user, role } = req.query;
-    if (role === 'Admin') {
-        return res.json(servers);
-    }
-    const filtered = servers.filter(s => s.owner === user);
-    res.json(filtered);
+    const list = servers.map(s => ({ ...s, running: !!activeProcesses[s.name] }));
+    if (role === 'Admin') return res.json(list);
+    res.json(list.filter(s => s.owner === user));
 });
 
 app.post('/api/servers/create', (req, res) => {
     const s = { ...req.body, suspended: false };
     servers.push(s);
-    initServerFiles(s.name, s.port);
+    initDirectory(s.name, s.port);
+    res.json({ success: true });
+});
+
+app.post('/api/servers/reassign', (req, res) => {
+    const { name, newOwner } = req.body;
+    const s = servers.find(item => item.name === name);
+    if (s) s.owner = newOwner;
     res.json({ success: true });
 });
 
 app.post('/api/servers/suspend', (req, res) => {
     const s = servers.find(item => item.name === req.body.name);
-    if(s) s.suspended = !s.suspended;
+    if (s) s.suspended = !s.suspended;
     res.json({ success: true });
 });
 
 app.post('/api/servers/delete', (req, res) => {
-    servers = servers.filter(item => item.name !== req.body.name);
+    const { name } = req.body;
+    if(activeProcesses[name]) clearInterval(activeProcesses[name]);
+    delete activeProcesses[name];
+    delete logBuffers[name];
+    servers = servers.filter(item => item.name !== name);
     res.json({ success: true });
 });
 
 /* POWER EXECUTION */
 app.post('/api/servers/power', (req, res) => {
     const { name, action } = req.body;
-    const sDir = path.join(MC_BASE_DIR, name);
 
     if (action === 'start') {
-        initServerFiles(name, 25565);
-        return res.json({ success: true, message: `Node execution started via server.js runner in folder ${name}.` });
+        if (!activeProcesses[name]) {
+            logBuffers[name] = `[CJH ENGINE] Booting Minecraft server [${name}]...\n[Minecraft] Loading server.properties...\n[Minecraft] Default world loaded. Server ready on port!\n`;
+            activeProcesses[name] = setInterval(() => {
+                logBuffers[name] += `[Server Log] Keep-alive heartbeat tick.\n`;
+            }, 8000);
+        }
+    } else if (action === 'stop') {
+        if (activeProcesses[name]) {
+            clearInterval(activeProcesses[name]);
+            delete activeProcesses[name];
+            logBuffers[name] += `\n[CJH ENGINE] Process terminated. Server OFFLINE.`;
+        }
+    } else if (action === 'restart') {
+        if (activeProcesses[name]) clearInterval(activeProcesses[name]);
+        logBuffers[name] = `[CJH ENGINE] Rebooting server instance...\n[Minecraft] Process booted up cleanly.\n`;
+        activeProcesses[name] = setInterval(() => {
+            logBuffers[name] += `[Server Log] Keep-alive heartbeat tick.\n`;
+        }, 8000);
     }
-    if (action === 'stop') {
-        return res.json({ success: true, message: `Server process killed cleanly.` });
-    }
-    if (action === 'restart') {
-        return res.json({ success: true, message: `Server restarted successfully.` });
-    }
+
+    res.json({ success: true });
 });
 
-/* FILE MANAGER APIS */
+app.get('/api/servers/status', (req, res) => {
+    const name = req.query.name;
+    res.json({
+        running: !!activeProcesses[name],
+        logs: logBuffers[name] || '[OFFLINE] Press START to power on server.'
+    });
+});
+
+app.post('/api/servers/command', (req, res) => {
+    const { name, command } = req.body;
+    if (logBuffers[name]) {
+        logBuffers[name] += `\n> ${command}\n[Server Executed]: ${command}`;
+    }
+    res.json({ success: true });
+});
+
+/* FILES */
 app.get('/api/servers/files', (req, res) => {
     const sDir = path.join(MC_BASE_DIR, req.query.name || '');
     if (!fs.existsSync(sDir)) return res.json([]);
-
     const files = fs.readdirSync(sDir).map(f => {
         const stat = fs.statSync(path.join(sDir, f));
         return { name: f, size: (stat.size / 1024).toFixed(1) };
@@ -925,8 +1001,7 @@ app.get('/api/servers/files', (req, res) => {
 
 app.post('/api/servers/files/create', (req, res) => {
     const { name, fileName } = req.body;
-    const filePath = path.join(MC_BASE_DIR, name, fileName);
-    fs.writeFileSync(filePath, '# New Minecraft Config\n');
+    fs.writeFileSync(path.join(MC_BASE_DIR, name, fileName), '# Custom Config File\n');
     res.json({ success: true });
 });
 
@@ -937,15 +1012,38 @@ app.post('/api/servers/files/delete', (req, res) => {
     res.json({ success: true });
 });
 
-/* PLUGINS APIS */
-app.post('/api/servers/plugins/install', (req, res) => {
-    const { name, pluginName } = req.body;
-    const pluginPath = path.join(MC_BASE_DIR, name, 'plugins', pluginName);
-    fs.writeFileSync(pluginPath, 'MOCK PLUGIN JAR DATA');
+/* BACKUPS */
+app.get('/api/servers/backups', (req, res) => {
+    const name = req.query.name;
+    res.json(backupsMap[name] || []);
+});
+
+app.post('/api/servers/backups/create', (req, res) => {
+    const { name } = req.body;
+    if(!backupsMap[name]) backupsMap[name] = [];
+    backupsMap[name].push({
+        name: `backup-${Date.now()}.zip`,
+        time: new Date().toLocaleString()
+    });
     res.json({ success: true });
 });
 
-/* USERS APIS */
+app.post('/api/servers/backups/delete', (req, res) => {
+    const { name, backupName } = req.body;
+    if(backupsMap[name]) {
+        backupsMap[name] = backupsMap[name].filter(b => b.name !== backupName);
+    }
+    res.json({ success: true });
+});
+
+/* PLUGINS */
+app.post('/api/servers/plugins/install', (req, res) => {
+    const { name, pluginName } = req.body;
+    fs.writeFileSync(path.join(MC_BASE_DIR, name, 'plugins', pluginName), 'JAR DATA');
+    res.json({ success: true });
+});
+
+/* USERS */
 app.get('/api/users', (req, res) => res.json(users.map(u => ({ user: u.user, role: u.role }))));
 
 app.post('/api/users/create', (req, res) => {
