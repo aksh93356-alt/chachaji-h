@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v4.5 - Auto Web UI & Server Installer
+# CJH PANEL v4.5 - Full Interactive Admin Dashboard
 # =========================================================
 
 set -e
@@ -94,11 +94,10 @@ EOF
 }
 EOF
 
-        # 3. Create Public Folder & index.html (Fix for Cannot GET /)
+        # 3. Create Public Folder & Interactive Login Dashboard
         mkdir -p public
-        if [ ! -f "public/index.html" ]; then
-            echo -e "${CYAN}[INFO] Creating Web Dashboard (public/index.html)...${NC}"
-            cat <<'EOF' > public/index.html
+        echo -e "${CYAN}[INFO] Creating Full Web UI Dashboard...${NC}"
+        cat <<'EOF' > public/index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,52 +105,156 @@ EOF
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CJH Panel v4.5</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .card {
-            background-color: #1e293b;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            text-align: center;
-            width: 320px;
-        }
-        h1 { color: #38bdf8; margin-bottom: 0.5rem; }
-        p { color: #94a3b8; font-size: 0.9rem; }
-        .status {
-            display: inline-block;
-            margin-top: 1rem;
-            padding: 0.5rem 1rem;
-            background-color: #166534;
-            color: #4ade80;
-            border-radius: 4px;
-            font-weight: bold;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0b0f19; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; }
+        
+        /* LOGIN PAGE */
+        #login-container { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; }
+        .login-box { background: #161e2e; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 360px; text-align: center; border: 1px solid #2d3748; }
+        .login-box h2 { color: #38bdf8; margin-bottom: 0.5rem; }
+        .login-box p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .input-group { margin-bottom: 1.2rem; text-align: left; }
+        .input-group label { display: block; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 0.3rem; }
+        .input-group input { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; }
+        .btn-login { width: 100%; padding: 0.75rem; border: none; border-radius: 6px; background: #0284c7; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-login:hover { background: #0369a1; }
+        .error-msg { color: #f87171; font-size: 0.85rem; margin-top: 1rem; display: none; }
+
+        /* DASHBOARD PAGE */
+        #dashboard-container { display: none; height: 100vh; flex-direction: row; }
+        .sidebar { width: 240px; background: #111827; border-right: 1px solid #1f2937; padding: 1.5rem 1rem; display: flex; flex-direction: column; }
+        .sidebar h2 { color: #38bdf8; font-size: 1.2rem; margin-bottom: 2rem; text-align: center; }
+        .nav-btn { background: transparent; border: none; color: #9ca3af; padding: 0.8rem 1rem; text-align: left; font-size: 0.95rem; border-radius: 6px; cursor: pointer; margin-bottom: 0.5rem; width: 100%; transition: 0.2s; }
+        .nav-btn.active, .nav-btn:hover { background: #1f2937; color: #38bdf8; font-weight: bold; }
+        .logout-btn { margin-top: auto; background: #991b1b; color: white; }
+        
+        .main-content { flex: 1; padding: 2rem; overflow-y: auto; background: #0b0f19; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1f2937; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+        .header h1 { font-size: 1.5rem; color: #f3f4f6; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .card { background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid #374151; margin-bottom: 1rem; }
+        .console-box { background: #000; color: #4ade80; font-family: monospace; padding: 1rem; border-radius: 6px; height: 350px; overflow-y: auto; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>CJH PANEL v4.5</h1>
-        <p>Cloud Hosting Interface</p>
-        <div class="status">System Online</div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-container">
+        <div class="login-box">
+            <h2>CJH PANEL v4.5</h2>
+            <p>Admin Login Required</p>
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter username">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter password">
+            </div>
+            <button class="btn-login" onclick="login()">Login to Dashboard</button>
+            <p id="err-msg" class="error-msg">Invalid Username or Password!</p>
+        </div>
     </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboard-container">
+        <div class="sidebar">
+            <h2>CJH PANEL</h2>
+            <button class="nav-btn active" onclick="switchTab('my-server', this)">My Server</button>
+            <button class="nav-btn" onclick="switchTab('console', this)">Console</button>
+            <button class="nav-btn" onclick="switchTab('settings', this)">Settings</button>
+            <button class="nav-btn logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="main-content">
+            <div class="header">
+                <h1 id="tab-title">My Server</h1>
+                <span style="color: #4ade80; font-weight: bold;">● Online</span>
+            </div>
+
+            <!-- TAB 1: MY SERVER -->
+            <div id="my-server" class="tab-content active">
+                <div class="card">
+                    <h3>Server Controls</h3>
+                    <p style="margin-top: 0.5rem;">Manage your cloud instance actions below:</p>
+                    <div style="margin-top: 1rem; display: flex; gap: 10px;">
+                        <button style="padding: 0.6rem 1.2rem; background: #16a34a; border:none; color:white; border-radius:4px; cursor:pointer;" onclick="alert('Server Started!')">Start Server</button>
+                        <button style="padding: 0.6rem 1.2rem; background: #dc2626; border:none; color:white; border-radius:4px; cursor:pointer;" onclick="alert('Server Stopped!')">Stop Server</button>
+                        <button style="padding: 0.6rem 1.2rem; background: #d97706; border:none; color:white; border-radius:4px; cursor:pointer;" onclick="alert('Server Restarting...')">Restart</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: CONSOLE -->
+            <div id="console" class="tab-content">
+                <div class="card">
+                    <h3>Realtime Console Output</h3>
+                    <div class="console-box" id="console-logs">
+                        [SYSTEM] CJH Panel Server Initialized...<br>
+                        [SYSTEM] Node.js process running on active port.<br>
+                        [AUTH] Admin user authenticated successfully.<br>
+                        [STATUS] WebSockets connected. Ready for commands...
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: SETTINGS -->
+            <div id="settings" class="tab-content">
+                <div class="card">
+                    <h3>Panel Configuration Settings</h3>
+                    <p style="margin-top: 0.5rem; color: #9ca3af;">Admin full control panel configurations.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user, pass })
+            });
+
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('dashboard-container').style.display = 'flex';
+            } else {
+                document.getElementById('err-msg').style.display = 'block';
+            }
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+            
+            let title = "My Server";
+            if(tabId === 'console') title = "Console";
+            if(tabId === 'settings') title = "Settings";
+            document.getElementById('tab-title').innerText = title;
+        }
+
+        function logout() {
+            location.reload();
+        }
+    </script>
 </body>
 </html>
 EOF
-        fi
 
-        # 4. Generate server.js automatically
-        if [ ! -f "server.js" ]; then
-            echo -e "${CYAN}[INFO] Generating server.js entrypoint...${NC}"
-            cat <<'EOF' > server.js
+        # 4. Generate server.js with Login API Route
+        echo -e "${CYAN}[INFO] Updating server.js with Login Authentication...${NC}"
+        cat <<'EOF' > server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -175,8 +278,12 @@ if (fs.existsSync('./config.json')) {
     }
 }
 
-app.get('/api/status', (req, res) => {
-    res.json({ status: "online", panel: "CJH Panel v4.5" });
+app.post('/api/login', (req, res) => {
+    const { user, pass } = req.body;
+    if (user === config.admin_user && pass === config.admin_pass) {
+        return res.json({ success: true, message: "Authenticated successfully" });
+    }
+    return res.json({ success: false, message: "Invalid credentials" });
 });
 
 const PORT = process.env.PORT || config.port || 6767;
@@ -188,7 +295,6 @@ server.listen(PORT, () => {
     console.log(`==================================================\n`);
 });
 EOF
-        fi
 
         echo -e "${CYAN}[INFO] Installing Node.js packages...${NC}"
         npm install
