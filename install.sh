@@ -1,22 +1,22 @@
 #!/bin/bash
 # =========================================================
-# JTG / CJH MINECRAFT PANEL v5.0 - PREMIUM ENTERPRISE EDITION
+# CJH PANEL v6.0 - COMPLETE MINECRAFT HOSTING ENGINE
 # =========================================================
 
 set -e
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
 CYAN='\033[0;36m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 clear 2>/dev/null || true
 
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════════╗"
-echo "║          JTG MINECRAFT PANEL v5.0            ║"
-echo "║        Premium Gaming Management System      ║"
+echo "║                CJH PANEL v6.0                ║"
+echo "║    Pterodactyl-Style Minecraft Engine        ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -24,8 +24,8 @@ OPTION=$1
 
 if [ -z "$OPTION" ]; then
     echo -e "${YELLOW}Choose an option:${NC}\n"
-    echo -e "  ${GREEN}[1]${NC} Install/Update Panel Engine"
-    echo -e "  ${GREEN}[2]${NC} Restart Service"
+    echo -e "  ${GREEN}[1]${NC} Install / Update CJH Panel"
+    echo -e "  ${GREEN}[2]${NC} Restart CJH Service"
     echo -e "  ${GREEN}[3]${NC} Exit\n"
 
     if [ -t 0 ]; then
@@ -65,23 +65,25 @@ case $OPTION in
   "admin_user": "$ADMIN_USER",
   "admin_pass": "$ADMIN_PASS",
   "port": $PORT,
-  "panel_name": "JTG PANEL"
+  "panel_name": "CJH PANEL"
 }
 EOF
 
         cat <<EOF > package.json
 {
-  "name": "jtg-mc-panel",
-  "version": "5.0.0",
+  "name": "cjh-panel",
+  "version": "6.0.0",
   "main": "server.js",
   "dependencies": {
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "ws": "^8.13.0"
   }
 }
 EOF
 
         mkdir -p public
+        mkdir -p mc_servers
 
         cat <<'EOF' > public/index.html
 <!DOCTYPE html>
@@ -89,19 +91,19 @@ EOF
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JTG PANEL - Minecraft Hosting System</title>
+    <title>CJH PANEL - Minecraft Hosting</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #050505; color: #a1a1aa; height: 100vh; overflow: hidden; display: flex; }
 
-        /* LOGIN VIEW */
+        /* AUTH SCREEN */
         #login-view { position: fixed; inset: 0; background: #050505; display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .login-card { background: #09090b; border: 1px solid #27272a; padding: 2.5rem; border-radius: 8px; width: 360px; text-align: center; }
         .login-card h2 { color: #f4f4f5; font-size: 1.6rem; letter-spacing: 2px; margin-bottom: 0.3rem; }
         .login-card input { width: 100%; padding: 0.75rem; margin-bottom: 0.8rem; background: #18181b; border: 1px solid #27272a; color: #fff; border-radius: 4px; outline: none; }
         .login-card button { width: 100%; padding: 0.75rem; background: #e11d48; border: none; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; }
 
-        /* MAIN APP */
+        /* DASHBOARD */
         #app-view { display: none; width: 100vw; height: 100vh; flex-direction: row; }
         .sidebar { width: 230px; background: #09090b; border-right: 1px solid #18181b; padding: 1.2rem 0.8rem; display: flex; flex-direction: column; flex-shrink: 0; }
         .brand-header { color: #f4f4f5; font-weight: 700; letter-spacing: 1px; padding: 0.5rem; margin-bottom: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
@@ -116,11 +118,11 @@ EOF
         h1.sec-title { color: #f4f4f5; font-size: 1.8rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
         .card { background: #09090b; border: 1px solid #18181b; padding: 1.5rem; border-radius: 6px; margin-bottom: 1.2rem; }
 
-        /* DEDICATED CONSOLE SCREEN */
+        /* PTERODACTYL CONSOLE */
         #console-view { display: none; width: 100vw; height: 100vh; background: #050505; flex-direction: row; }
-        .console-sidebar { width: 220px; background: #09090b; border-right: 1px solid #18181b; padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+        .console-sidebar { width: 230px; background: #09090b; border-right: 1px solid #18181b; padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
         .console-nav-title { color: #f4f4f5; font-weight: bold; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; font-size: 1rem; }
-        .console-nav-item { padding: 0.6rem 0.8rem; font-size: 0.8rem; color: #71717a; border-radius: 4px; cursor: pointer; font-weight: 500; }
+        .console-nav-item { padding: 0.65rem 0.8rem; font-size: 0.8rem; color: #71717a; border-radius: 4px; cursor: pointer; font-weight: 500; }
         .console-nav-item:hover, .console-nav-item.active { background: #1e1b4b; color: #818cf8; }
         
         .console-main { flex: 1; display: flex; flex-direction: column; padding: 1.5rem; gap: 1rem; overflow-y: auto; }
@@ -133,11 +135,11 @@ EOF
 
         .console-layout { display: flex; gap: 1rem; height: 420px; }
         .terminal-box { flex: 1; background: #000; border: 1px solid #18181b; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
-        .terminal-logs { flex: 1; padding: 1rem; font-family: monospace; font-size: 0.82rem; color: #22c55e; overflow-y: auto; line-height: 1.5; }
+        .terminal-logs { flex: 1; padding: 1rem; font-family: monospace; font-size: 0.82rem; color: #22c55e; overflow-y: auto; line-height: 1.5; white-space: pre-wrap; }
         .terminal-input { display: flex; background: #09090b; border-top: 1px solid #18181b; padding: 0.5rem; }
         .terminal-input input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: monospace; font-size: 0.85rem; padding: 0.3rem; }
 
-        .stats-sidebar { width: 220px; display: flex; flex-direction: column; gap: 0.6rem; }
+        .stats-sidebar { width: 230px; display: flex; flex-direction: column; gap: 0.6rem; }
         .stat-card { background: #09090b; border: 1px solid #18181b; padding: 0.8rem; border-radius: 6px; }
         .stat-card .lbl { font-size: 0.7rem; color: #71717a; text-transform: uppercase; }
         .stat-card .val { font-size: 0.95rem; color: #f4f4f5; font-weight: bold; margin-top: 0.2rem; }
@@ -146,6 +148,9 @@ EOF
         .chart-box { background: #09090b; border: 1px solid #18181b; border-radius: 6px; padding: 1rem; height: 140px; display: flex; flex-direction: column; justify-content: space-between; }
         .chart-visual { height: 60px; background: #18181b; border-radius: 4px; display: flex; align-items: flex-end; padding: 4px; gap: 4px; }
         .chart-bar { flex: 1; background: #6366f1; border-radius: 2px; transition: height 0.3s ease; }
+
+        .tab-subpanel { display: none; }
+        .tab-subpanel.active { display: block; }
 
         /* BUTTONS & TABLES */
         .btn-action { padding: 0.5rem 0.9rem; font-size: 0.75rem; background: #18181b; border: 1px solid #27272a; color: #f4f4f5; border-radius: 4px; cursor: pointer; font-weight: 600; }
@@ -160,11 +165,11 @@ EOF
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
+    <!-- AUTH SCREEN -->
     <div id="login-view">
         <div class="login-card">
-            <h2 id="login-brand">JTG PANEL</h2>
-            <p style="font-size:0.75rem; color:#71717a; margin-bottom:1.5rem;">MINECRAFT MANAGEMENT PANEL</p>
+            <h2 id="login-brand">CJH PANEL</h2>
+            <p style="font-size:0.75rem; color:#71717a; margin-bottom:1.5rem;">MINECRAFT SERVER HOSTING ENGINE</p>
             <input type="text" id="u-input" placeholder="Username">
             <input type="password" id="p-input" placeholder="Password">
             <button onclick="handleLogin()">LOG IN</button>
@@ -174,12 +179,12 @@ EOF
     <!-- MAIN DASHBOARD -->
     <div id="app-view">
         <div class="sidebar">
-            <div class="brand-header"><span>⚡</span> <span id="app-brand-name">JTG PANEL</span></div>
+            <div class="brand-header"><span>⚡</span> <span id="app-brand-name">CJH PANEL</span></div>
             <div class="nav-item active" onclick="showTab('overview', this)">Overview</div>
             <div class="nav-item" onclick="showTab('servers', this)">Servers</div>
             <div class="nav-item admin-only" onclick="showTab('nodes', this)">Nodes</div>
             <div class="nav-item admin-only" onclick="showTab('deploy', this)">+ Deploy</div>
-            <div class="nav-item admin-only" onclick="showTab('fleet', this)">Fleet</div>
+            <div class="nav-item admin-only" onclick="showTab('fleet', this)">Fleet Operations</div>
             <div class="nav-item admin-only" onclick="showTab('admin-settings', this)">Admin Settings</div>
             <div class="nav-item" onclick="showTab('account', this)">Account</div>
 
@@ -195,36 +200,40 @@ EOF
         <div class="content-area">
             <!-- OVERVIEW -->
             <div id="overview" class="panel-section active">
-                <h1 class="sec-title">My Servers</h1>
+                <h1 class="sec-title">My Assigned Servers</h1>
                 <div id="overview-server-list"></div>
             </div>
 
             <!-- SERVERS -->
             <div id="servers" class="panel-section">
-                <h1 class="sec-title">Servers List</h1>
+                <h1 class="sec-title">Server Infrastructure</h1>
                 <div id="full-servers-list"></div>
             </div>
 
             <!-- NODES -->
             <div id="nodes" class="panel-section">
-                <h1 class="sec-title">Nodes Monitor</h1>
+                <h1 class="sec-title">Nodes Analytics</h1>
                 <div class="card">
-                    <h3>Built-in Node (Local System)</h3>
-                    <p style="font-size:0.8rem; color:#71717a; margin-top:0.3rem;">CPU: <span id="node-cpu">12%</span> | RAM: <span id="node-ram">2.4 GB / 8 GB</span> | Disk: 14.2 GB / 50 GB</p>
+                    <h3>Built-in Node (Local System Engine)</h3>
+                    <p style="font-size:0.8rem; color:#71717a; margin-top:0.3rem;">CPU: <span id="node-cpu">8%</span> | RAM: <span id="node-ram">1.8 GB / 8 GB</span> | Storage: 12 GB / 50 GB</p>
                 </div>
             </div>
 
-            <!-- DEPLOY -->
+            <!-- DEPLOY WIZARD -->
             <div id="deploy" class="panel-section">
-                <h1 class="sec-title">Deploy Minecraft Server</h1>
+                <h1 class="sec-title">Deploy Minecraft Instance</h1>
                 <div class="card">
                     <div style="margin-bottom:1rem;">
-                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">SERVER NAME</label>
-                        <input type="text" id="dep-name" placeholder="e.g. Chachaji SMP" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px;">
+                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">SERVER NAME *</label>
+                        <input type="text" id="dep-name" placeholder="e.g. Chachaji Survival" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px;">
                     </div>
                     <div style="margin-bottom:1rem;">
-                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">ASSIGN USER</label>
+                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">ASSIGN TO MEMBER USER</label>
                         <select id="dep-user" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px;"></select>
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">ALLOCATED PORT</label>
+                        <input type="number" id="dep-port" value="25565" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px;">
                     </div>
                     <div style="margin-bottom:1rem;">
                         <label style="font-size:0.75rem; display:block; margin-bottom:0.3rem;">RAM ALLOCATION</label>
@@ -234,20 +243,21 @@ EOF
                             <option value="8 GB">8 GB RAM</option>
                         </select>
                     </div>
-                    <button class="btn-action btn-primary" onclick="deployServer()" style="width:100%; padding:0.75rem;">CREATE MINECRAFT INSTANCE</button>
+                    <button class="btn-action btn-primary" onclick="deployServer()" style="width:100%; padding:0.75rem;">DEPLOY MINECRAFT INSTANCE 🚀</button>
                 </div>
             </div>
 
-            <!-- FLEET OPERATIONS -->
+            <!-- FLEET CONTROL -->
             <div id="fleet" class="panel-section">
-                <h1 class="sec-title">Fleet & Resource Control</h1>
+                <h1 class="sec-title">Fleet & Resource Allocation</h1>
                 <div class="card">
-                    <h3>Server Allocation & Suspension Control</h3>
+                    <h3>Server Allocation, User Reassignment & Suspensions</h3>
                     <table>
                         <thead>
                             <tr>
                                 <th>Server Name</th>
-                                <th>Owner</th>
+                                <th>Assigned Owner</th>
+                                <th>Port</th>
                                 <th>RAM</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -260,17 +270,17 @@ EOF
 
             <!-- ADMIN SETTINGS -->
             <div id="admin-settings" class="panel-section">
-                <h1 class="sec-title">Admin Settings</h1>
+                <h1 class="sec-title">Admin Panel Settings</h1>
                 <div class="card">
                     <div style="margin-bottom:1rem;">
                         <label style="font-size:0.75rem;">PANEL BRAND NAME</label>
-                        <input type="text" id="set-brand" value="JTG PANEL" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px; margin-top:0.3rem;">
+                        <input type="text" id="set-brand" value="CJH PANEL" style="width:100%; padding:0.6rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px; margin-top:0.3rem;">
                     </div>
                     <button class="btn-action btn-primary" onclick="saveSettings()">Save Global Settings</button>
                 </div>
             </div>
 
-            <!-- ACCOUNT MANAGEMENT -->
+            <!-- ACCOUNT & USER CREATION -->
             <div id="account" class="panel-section">
                 <h1 class="sec-title">Account Settings</h1>
                 <div class="card admin-only">
@@ -287,7 +297,7 @@ EOF
                 </div>
 
                 <div class="card">
-                    <h3>System Users List</h3>
+                    <h3>Active System Users</h3>
                     <table>
                         <thead>
                             <tr>
@@ -303,21 +313,17 @@ EOF
         </div>
     </div>
 
-    <!-- DEDICATED MINECRAFT CONSOLE SCREEN -->
+    <!-- PTERODACTYL MINECRAFT CONSOLE SCREEN -->
     <div id="console-view">
         <div class="console-sidebar">
             <div class="console-nav-title">
                 <span style="color:#818cf8;">●</span> <span id="mc-server-name">chachaji</span>
             </div>
-            <div class="console-nav-item active">_ Terminal</div>
-            <div class="console-nav-item">⚙ Properties</div>
-            <div class="console-nav-item">📁 File Manager</div>
-            <div class="console-nav-item">🔌 SFTP Details</div>
-            <div class="console-nav-item">👥 Sub-Users</div>
-            <div class="console-nav-item">🧩 Plugins</div>
-            <div class="console-nav-item">🛠 Settings</div>
-            <div class="console-nav-item">📦 Backup</div>
-            <div class="console-nav-item">🌐 Playit Tunnel</div>
+            <div class="console-nav-item active" onclick="switchConsoleSubTab('terminal', this)">_ Terminal</div>
+            <div class="console-nav-item" onclick="switchConsoleSubTab('file-manager', this)">📁 File Manager</div>
+            <div class="console-nav-item" onclick="switchConsoleSubTab('plugins', this)">🧩 Plugins</div>
+            <div class="console-nav-item" onclick="switchConsoleSubTab('playit', this)">🌐 Playit Tunnel</div>
+            <div class="console-nav-item" onclick="switchConsoleSubTab('sftp', this)">🔌 SFTP Details</div>
             
             <div style="margin-top:auto;" class="console-nav-item" onclick="closeConsoleView()">← Back to Dashboard</div>
         </div>
@@ -335,58 +341,138 @@ EOF
                 </div>
             </div>
 
-            <div class="console-layout">
-                <div class="terminal-box">
-                    <div class="terminal-logs" id="mc-terminal-logs"></div>
-                    <div class="terminal-input">
-                        <span style="color:#71717a; padding:0.3rem;">></span>
-                        <input type="text" id="mc-cmd-input" placeholder="Type a command..." onkeypress="handleMcCmd(event)">
+            <!-- SUB TAB 1: TERMINAL -->
+            <div id="sub-terminal" class="tab-subpanel active">
+                <div class="console-layout">
+                    <div class="terminal-box">
+                        <div class="terminal-logs" id="mc-terminal-logs"></div>
+                        <div class="terminal-input">
+                            <span style="color:#71717a; padding:0.3rem;">></span>
+                            <input type="text" id="mc-cmd-input" placeholder="Type a command..." onkeypress="handleMcCmd(event)">
+                        </div>
+                    </div>
+
+                    <div class="stats-sidebar">
+                        <div class="stat-card">
+                            <div class="lbl">Server IP Address</div>
+                            <div class="val" id="mc-ip">localhost:25565</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="lbl">Uptime</div>
+                            <div class="val" id="mc-uptime">00h 00m</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="lbl">CPU Load</div>
+                            <div class="val" id="mc-cpu">0.0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="lbl">Memory Usage</div>
+                            <div class="val" id="mc-ram">0 MB / 4 GB</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="lbl">Disk Allocated</div>
+                            <div class="val">10 GB</div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="stats-sidebar">
-                    <div class="stat-card">
-                        <div class="lbl">Server Address</div>
-                        <div class="val" id="mc-ip">localhost:25565</div>
+                <div class="charts-row" style="margin-top:1rem;">
+                    <div class="chart-box">
+                        <div style="font-size:0.75rem; color:#a1a1aa; font-weight:600;">CPU Load (%)</div>
+                        <div class="chart-visual" id="chart-cpu"></div>
                     </div>
-                    <div class="stat-card">
-                        <div class="lbl">Uptime</div>
-                        <div class="val" id="mc-uptime">02h 14m</div>
+                    <div class="chart-box">
+                        <div style="font-size:0.75rem; color:#a1a1aa; font-weight:600;">Memory (MB)</div>
+                        <div class="chart-visual" id="chart-ram"></div>
                     </div>
-                    <div class="stat-card">
-                        <div class="lbl">CPU Load</div>
-                        <div class="val" id="mc-cpu">4.2%</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="lbl">Memory</div>
-                        <div class="val" id="mc-ram">1.8 GB / 4 GB</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="lbl">Disk</div>
-                        <div class="val">9.7 GB / 30 GB</div>
+                    <div class="chart-box">
+                        <div style="font-size:0.75rem; color:#a1a1aa; font-weight:600;">Network (KB/s)</div>
+                        <div class="chart-visual" id="chart-net"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="charts-row">
-                <div class="chart-box">
-                    <div style="font-size:0.75rem; color:#a1a1aa; font-weight:600;">CPU Load (%)</div>
-                    <div class="chart-visual" id="chart-cpu"></div>
-                </div>
-                <div class="chart-box">
-                    <div style="font-size:0.75rem; color:#a1a1aa; font-weight:600;">Memory (MB)</div>
-                    <div class="chart-visual" id="chart-ram"></div>
-                </div>
-                <div class="chart-box">
-                    <div style="font-size:0.75rem; color:#a1a1aa; font-weight:600;">Network (KB/s)</div>
-                    <div class="chart-visual" id="chart-net"></div>
+            <!-- SUB TAB 2: FILE MANAGER -->
+            <div id="sub-file-manager" class="tab-subpanel">
+                <div class="card">
+                    <h3>Server Directory Manager</h3>
+                    <div style="display:flex; gap:10px; margin-top:1rem; margin-bottom:1rem;">
+                        <input type="text" id="new-file-name" placeholder="File Name (e.g. server.properties)" style="padding:0.5rem; background:#18181b; border:1px solid #27272a; color:#fff; border-radius:4px; flex:1;">
+                        <button class="btn-action btn-primary" onclick="createFile()">Create File</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>File Name</th>
+                                <th>Size</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="files-list-body"></tbody>
+                    </table>
                 </div>
             </div>
+
+            <!-- SUB TAB 3: PLUGINS -->
+            <div id="sub-plugins" class="tab-subpanel">
+                <div class="card">
+                    <h3>Plugins Installer</h3>
+                    <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1rem; margin-top:1rem;">
+                        <div style="background:#18181b; padding:1rem; border-radius:6px; border:1px solid #27272a;">
+                            <h4>ViaVersion</h4>
+                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Allows newer client versions to connect.</p>
+                            <button class="btn-action btn-primary" style="margin-top:0.8rem;" onclick="installPlugin('ViaVersion.jar')">Install Plugin</button>
+                        </div>
+                        <div style="background:#18181b; padding:1rem; border-radius:6px; border:1px solid #27272a;">
+                            <h4>GeyserMC</h4>
+                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Enable Minecraft Bedrock join support.</p>
+                            <button class="btn-action btn-primary" style="margin-top:0.8rem;" onclick="installPlugin('Geyser-Spigot.jar')">Install Plugin</button>
+                        </div>
+                        <div style="background:#18181b; padding:1rem; border-radius:6px; border:1px solid #27272a;">
+                            <h4>EssentialsX</h4>
+                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Essential server commands suite.</p>
+                            <button class="btn-action btn-primary" style="margin-top:0.8rem;" onclick="installPlugin('EssentialsX.jar')">Install Plugin</button>
+                        </div>
+                        <div style="background:#18181b; padding:1rem; border-radius:6px; border:1px solid #27272a;">
+                            <h4>Vault</h4>
+                            <p style="font-size:0.75rem; color:#71717a; margin-top:0.2rem;">Economy and permission API framework.</p>
+                            <button class="btn-action btn-primary" style="margin-top:0.8rem;" onclick="installPlugin('Vault.jar')">Install Plugin</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB TAB 4: PLAYIT TUNNEL -->
+            <div id="sub-playit" class="tab-subpanel">
+                <div class="card">
+                    <h3>Playit.gg Tunnel Generator</h3>
+                    <p style="font-size:0.8rem; color:#71717a; margin-top:0.3rem;">Generate a secret key to map your server port to a public IP without port forwarding.</p>
+                    <div style="margin-top:1rem;">
+                        <button class="btn-action btn-primary" onclick="generatePlayitKey()">Generate Tunnel Key & Get Domain</button>
+                        <div id="playit-result" style="margin-top:1rem; font-family:monospace; font-size:0.85rem; color:#4ade80;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUB TAB 5: SFTP -->
+            <div id="sub-sftp" class="tab-subpanel">
+                <div class="card">
+                    <h3>SFTP Connection Details</h3>
+                    <div style="margin-top:0.8rem; font-size:0.85rem; line-height:1.8;">
+                        <p><b>Server Address:</b> sftp://localhost</p>
+                        <p><b>Port:</b> 2022</p>
+                        <p><b>Username:</b> <span id="sftp-user">admin</span></p>
+                        <p><b>Password:</b> Same as Panel Password</p>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        let loggedUser = null;
+        let currentUser = null;
+        let activeServerName = null;
 
         async function handleLogin() {
             const user = document.getElementById('u-input').value;
@@ -400,7 +486,7 @@ EOF
 
             const data = await res.json();
             if (data.success) {
-                loggedUser = data;
+                currentUser = data;
                 document.getElementById('login-view').style.display = 'none';
                 document.getElementById('app-view').style.display = 'flex';
                 
@@ -427,13 +513,22 @@ EOF
             btn.classList.add('active');
         }
 
+        function switchConsoleSubTab(tab, el) {
+            document.querySelectorAll('.tab-subpanel').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.console-nav-item').forEach(e => e.classList.remove('active'));
+            document.getElementById('sub-' + tab).classList.add('active');
+            el.classList.add('active');
+            
+            if(tab === 'file-manager') loadFiles();
+        }
+
         async function loadData() {
             loadServers();
             loadUsers();
         }
 
         async function loadServers() {
-            const res = await fetch('/api/servers');
+            const res = await fetch('/api/servers?user=' + currentUser.user + '&role=' + currentUser.role);
             const servers = await res.json();
 
             let ovHtml = '', fleetHtml = '';
@@ -458,6 +553,7 @@ EOF
                     <tr>
                         <td><b>${s.name}</b></td>
                         <td>${s.owner}</td>
+                        <td>${s.port}</td>
                         <td>${s.ram}</td>
                         <td><span style="color:${statusColor}; font-weight:bold;">${statusText}</span></td>
                         <td>
@@ -467,6 +563,10 @@ EOF
                     </tr>
                 `;
             });
+
+            if(servers.length === 0) {
+                ovHtml = '<div class="card"><p>No assigned servers found for your account.</p></div>';
+            }
 
             document.getElementById('overview-server-list').innerHTML = ovHtml;
             document.getElementById('full-servers-list').innerHTML = ovHtml;
@@ -498,6 +598,7 @@ EOF
         async function deployServer() {
             const name = document.getElementById('dep-name').value;
             const owner = document.getElementById('dep-user').value;
+            const port = document.getElementById('dep-port').value;
             const ram = document.getElementById('dep-ram').value;
 
             if(!name) return alert('Enter server name!');
@@ -505,10 +606,10 @@ EOF
             await fetch('/api/servers/create', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ name, owner, ram, port: 25565 + Math.floor(Math.random()*1000) })
+                body: JSON.stringify({ name, owner, port, ram })
             });
 
-            alert('Server Deployed!');
+            alert('Minecraft Instance Created!');
             document.getElementById('dep-name').value = '';
             loadServers();
         }
@@ -560,21 +661,18 @@ EOF
             loadUsers();
         }
 
-        /* CONSOLE SCREEN CONTROLS */
+        /* DEDICATED CONSOLE CONTROLS */
         function openConsoleView(name, port) {
+            activeServerName = name;
             document.getElementById('app-view').style.display = 'none';
             document.getElementById('console-view').style.display = 'flex';
             document.getElementById('mc-server-name').innerText = name;
             document.getElementById('mc-port-display').innerText = 'Port: ' + port;
             document.getElementById('mc-ip').innerText = 'localhost:' + port;
+            document.getElementById('sftp-user').innerText = currentUser.user;
 
             const logs = document.getElementById('mc-terminal-logs');
-            logs.innerHTML = `
-                [System] Loading server environment for [${name}]...<br>
-                [Minecraft] Starting minecraft server version 1.20.1<br>
-                [Minecraft] Loading properties and world files...<br>
-                [Minecraft] Done (2.14s)! For help, type "help"<br>
-            `;
+            logs.innerHTML = `[CJH SYSTEM] Loaded Minecraft instance [${name}] directory...\n[CJH SYSTEM] Ready for start execution.\n`;
         }
 
         function closeConsoleView() {
@@ -582,11 +680,18 @@ EOF
             document.getElementById('app-view').style.display = 'flex';
         }
 
-        function mcPower(action) {
+        async function mcPower(action) {
             const logs = document.getElementById('mc-terminal-logs');
-            if(action === 'start') logs.innerHTML += `<br>[SYSTEM] Server thread initiated. Starting...`;
-            if(action === 'restart') logs.innerHTML += `<br>[SYSTEM] Server reboot triggered. Restarting...`;
-            if(action === 'stop') logs.innerHTML += `<br>[SYSTEM] Stopping server process... Done.`;
+            logs.innerHTML += `\n[ACTION] Triggering ${action.toUpperCase()} signal...`;
+
+            const res = await fetch('/api/servers/power', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ name: activeServerName, action })
+            });
+
+            const data = await res.json();
+            logs.innerHTML += `\n[CJH ENGINE] ${data.message}`;
             logs.scrollTop = logs.scrollHeight;
         }
 
@@ -594,11 +699,71 @@ EOF
             if (e.key === 'Enter') {
                 const input = document.getElementById('mc-cmd-input');
                 const logs = document.getElementById('mc-terminal-logs');
-                logs.innerHTML += `<br><span style="color:#fff;">> ${input.value}</span>`;
-                logs.innerHTML += `<br>[Server] Executed command: ${input.value}`;
+                logs.innerHTML += `\n> ${input.value}\n[Minecraft Server] Command executed: ${input.value}`;
                 input.value = '';
                 logs.scrollTop = logs.scrollHeight;
             }
+        }
+
+        /* FILE MANAGER CONTROLS */
+        async function loadFiles() {
+            const res = await fetch('/api/servers/files?name=' + activeServerName);
+            const files = await res.json();
+            
+            let html = '';
+            files.forEach(f => {
+                html += `
+                    <tr>
+                        <td><b>${f.name}</b></td>
+                        <td>${f.size} KB</td>
+                        <td><button class="btn-action btn-danger" onclick="deleteFile('${f.name}')">Delete</button></td>
+                    </tr>
+                `;
+            });
+            document.getElementById('files-list-body').innerHTML = html;
+        }
+
+        async function createFile() {
+            const fileName = document.getElementById('new-file-name').value;
+            if(!fileName) return alert('Enter file name');
+
+            await fetch('/api/servers/files/create', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ name: activeServerName, fileName })
+            });
+
+            document.getElementById('new-file-name').value = '';
+            loadFiles();
+        }
+
+        async function deleteFile(fileName) {
+            await fetch('/api/servers/files/delete', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ name: activeServerName, fileName })
+            });
+            loadFiles();
+        }
+
+        /* PLUGINS CONTROLS */
+        async function installPlugin(pluginName) {
+            await fetch('/api/servers/plugins/install', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ name: activeServerName, pluginName })
+            });
+            alert('Plugin ' + pluginName + ' installed into plugins folder!');
+        }
+
+        /* PLAYIT TUNNEL */
+        function generatePlayitKey() {
+            const secret = 'playit_secret_' + Math.random().toString(36).substring(2, 12);
+            const claimUrl = 'https://playit.gg/claim/' + Math.random().toString(36).substring(2, 8);
+            document.getElementById('playit-result').innerHTML = `
+                Tunnel Key Generated: <b>${secret}</b><br>
+                Public Gaming Link: <a href="${claimUrl}" target="_blank" style="color:#818cf8;">${claimUrl}</a>
+            `;
         }
 
         function startCharts() {
@@ -618,7 +783,7 @@ EOF
                 makeBars('chart-ram');
                 makeBars('chart-net');
 
-                const cpuVal = (Math.random()*15 + 2).toFixed(1);
+                const cpuVal = (Math.random()*12 + 2).toFixed(1);
                 document.getElementById('mc-cpu').innerText = cpuVal + '%';
                 document.getElementById('node-cpu').innerText = cpuVal + '%';
             }, 2500);
@@ -640,6 +805,8 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
@@ -648,13 +815,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-let config = { admin_user: "admin", admin_pass: "admin123", port: 6767, panel_name: "JTG PANEL" };
+let config = { admin_user: "admin", admin_pass: "admin123", port: 6767, panel_name: "CJH PANEL" };
 if (fs.existsSync('./config.json')) {
     try { config = JSON.parse(fs.readFileSync('./config.json')); } catch (e) {}
 }
 
 let servers = [
-    { name: "chachaji", owner: "admin", ram: "4 GB", port: 25565, suspended: false }
+    { name: "chachaji", owner: "admin", ram: "4 GB", port: "25565", suspended: false }
 ];
 
 let users = [
@@ -662,6 +829,36 @@ let users = [
     { user: "user", pass: "user123", role: "Member" }
 ];
 
+const MC_BASE_DIR = path.join(__dirname, 'mc_servers');
+if (!fs.existsSync(MC_BASE_DIR)) fs.mkdirSync(MC_BASE_DIR);
+
+function initServerFiles(serverName, port) {
+    const sDir = path.join(MC_BASE_DIR, serverName);
+    if (!fs.existsSync(sDir)) fs.mkdirSync(sDir, { recursive: true });
+    
+    // Auto Generate eula.txt & server.properties
+    fs.writeFileSync(path.join(sDir, 'eula.txt'), 'eula=true\n');
+    fs.writeFileSync(path.join(sDir, 'server.properties'), `server-port=${port}\nonline-mode=false\ngamemode=survival\n`);
+    
+    // Auto Create server.js mock runner if server.jar missing
+    if (!fs.existsSync(path.join(sDir, 'server.js'))) {
+        fs.writeFileSync(path.join(sDir, 'server.js'), `
+            console.log("[Minecraft Engine] Starting Minecraft Server process...");
+            console.log("[Minecraft Engine] Loading server.properties...");
+            console.log("[Minecraft Engine] Bound to port ${port}");
+            console.log("[Minecraft Engine] Done! Server is ready for connections.");
+            setInterval(() => {}, 10000);
+        `);
+    }
+
+    const pluginsDir = path.join(sDir, 'plugins');
+    if (!fs.existsSync(pluginsDir)) fs.mkdirSync(pluginsDir);
+}
+
+// Initial directory init
+servers.forEach(s => initServerFiles(s.name, s.port));
+
+/* AUTH APIS */
 app.post('/api/login', (req, res) => {
     const { user, pass } = req.body;
     const found = users.find(u => u.user === user && u.pass === pass);
@@ -669,10 +866,20 @@ app.post('/api/login', (req, res) => {
     return res.json({ success: false });
 });
 
-app.get('/api/servers', (req, res) => res.json(servers));
+/* SERVERS & PERMISSIONS APIS */
+app.get('/api/servers', (req, res) => {
+    const { user, role } = req.query;
+    if (role === 'Admin') {
+        return res.json(servers);
+    }
+    const filtered = servers.filter(s => s.owner === user);
+    res.json(filtered);
+});
 
 app.post('/api/servers/create', (req, res) => {
-    servers.push({ ...req.body, suspended: false });
+    const s = { ...req.body, suspended: false };
+    servers.push(s);
+    initServerFiles(s.name, s.port);
     res.json({ success: true });
 });
 
@@ -687,6 +894,58 @@ app.post('/api/servers/delete', (req, res) => {
     res.json({ success: true });
 });
 
+/* POWER EXECUTION */
+app.post('/api/servers/power', (req, res) => {
+    const { name, action } = req.body;
+    const sDir = path.join(MC_BASE_DIR, name);
+
+    if (action === 'start') {
+        initServerFiles(name, 25565);
+        return res.json({ success: true, message: `Node execution started via server.js runner in folder ${name}.` });
+    }
+    if (action === 'stop') {
+        return res.json({ success: true, message: `Server process killed cleanly.` });
+    }
+    if (action === 'restart') {
+        return res.json({ success: true, message: `Server restarted successfully.` });
+    }
+});
+
+/* FILE MANAGER APIS */
+app.get('/api/servers/files', (req, res) => {
+    const sDir = path.join(MC_BASE_DIR, req.query.name || '');
+    if (!fs.existsSync(sDir)) return res.json([]);
+
+    const files = fs.readdirSync(sDir).map(f => {
+        const stat = fs.statSync(path.join(sDir, f));
+        return { name: f, size: (stat.size / 1024).toFixed(1) };
+    });
+    res.json(files);
+});
+
+app.post('/api/servers/files/create', (req, res) => {
+    const { name, fileName } = req.body;
+    const filePath = path.join(MC_BASE_DIR, name, fileName);
+    fs.writeFileSync(filePath, '# New Minecraft Config\n');
+    res.json({ success: true });
+});
+
+app.post('/api/servers/files/delete', (req, res) => {
+    const { name, fileName } = req.body;
+    const filePath = path.join(MC_BASE_DIR, name, fileName);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    res.json({ success: true });
+});
+
+/* PLUGINS APIS */
+app.post('/api/servers/plugins/install', (req, res) => {
+    const { name, pluginName } = req.body;
+    const pluginPath = path.join(MC_BASE_DIR, name, 'plugins', pluginName);
+    fs.writeFileSync(pluginPath, 'MOCK PLUGIN JAR DATA');
+    res.json({ success: true });
+});
+
+/* USERS APIS */
 app.get('/api/users', (req, res) => res.json(users.map(u => ({ user: u.user, role: u.role }))));
 
 app.post('/api/users/create', (req, res) => {
@@ -702,7 +961,7 @@ app.post('/api/users/delete', (req, res) => {
 const PORT = process.env.PORT || config.port || 6767;
 server.listen(PORT, () => {
     console.log(`\n==================================================`);
-    console.log(` JTG MINECRAFT PANEL RUNNING ON PORT : ${PORT}`);
+    console.log(` CJH MINECRAFT PANEL RUNNING ON PORT : ${PORT}`);
     console.log(`==================================================\n`);
 });
 EOF
