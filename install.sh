@@ -1,14 +1,14 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v3.0 - All-in-One Installer & Updater
+# CJH PANEL v3.5 - Advanced Interactive Installer
 # Credit: ZAIRA x Jishnu
-# Environment: Linux VPS / CodeSandbox Devbox
+# Supported: CodeSandbox Devbox & Linux VPS
 # =========================================================
 
 set -e
 
 PANEL_NAME="CJH Panel"
-PORT="6767"
+DEFAULT_PORT="6767"
 PLAYIT_VERSION="0.9.3"
 
 # Colors
@@ -23,7 +23,7 @@ print_banner() {
     clear 2>/dev/null || true
     echo -e "${CYAN}${BOLD}"
     echo "╔══════════════════════════════════════════════╗"
-    echo "║               CJH PANEL v3.0                 ║"
+    echo "║               CJH PANEL v3.5                 ║"
     echo "║        Automated Server Management           ║"
     echo "║             ZAIRA x Jishnu                   ║"
     echo "╚══════════════════════════════════════════════╝"
@@ -35,7 +35,7 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 check_deps() {
-    log_info "Installing system dependencies..."
+    log_info "Installing dependencies..."
     if command -v apt-get &> /dev/null; then
         sudo apt-get update -y -q > /dev/null 2>&1 || true
         sudo apt-get install -y curl git build-essential ca-certificates tar xz-utils unzip wget -q > /dev/null 2>&1 || true
@@ -45,15 +45,8 @@ check_deps() {
     fi
 }
 
-install_docker_playit() {
-    log_info "Checking Docker Environment..."
-    if command -v docker &> /dev/null; then
-        sudo systemctl enable --now docker > /dev/null 2>&1 || true
-    else
-        log_info "Skipping Docker daemon auto-start (Containerized Environment Detected)."
-    fi
-
-    log_info "Installing Playit.gg Agent..."
+install_playit() {
+    log_info "Installing Playit.gg Tunnel Agent..."
     if ! command -v playit &> /dev/null; then
         ARCH=$(uname -m)
         case "$ARCH" in
@@ -70,7 +63,7 @@ install_docker_playit() {
 }
 
 install_node() {
-    log_info "Checking Node.js..."
+    log_info "Checking Node.js & PM2..."
     if ! command -v node &> /dev/null || [ "$(node -v | tr -d 'v' | cut -d'.' -f1)" -lt 18 ]; then
         curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - > /dev/null 2>&1 || true
         sudo apt-get install -y nodejs > /dev/null 2>&1 || true
@@ -81,18 +74,28 @@ install_node() {
 }
 
 setup_application() {
-    echo -e "\n${YELLOW}=== ADMIN ACCOUNT SETUP ===${NC}"
-    read -p "Enter Admin Username: " ADMIN_USER
-    read -s -p "Enter Admin Password: " ADMIN_PASS
-    echo ""
+    echo -e "\n${YELLOW}=== ADMIN ACCOUNT & SETUP ===${NC}"
+    
+    # Read from terminal safely inside pipes
+    exec < /dev/tty 2>/dev/null || true
 
-    log_info "Creating Panel files and structure..."
-    mkdir -p .data/servers public
+    read -p "Enter Admin Username [default: admin]: " ADMIN_USER
+    ADMIN_USER=${ADMIN_USER:-admin}
+
+    read -s -p "Enter Admin Password [default: admin123]: " ADMIN_PASS
+    echo ""
+    ADMIN_PASS=${ADMIN_PASS:-admin123}
+
+    read -p "Enter Panel Port [default: 6767]: " PORT
+    PORT=${PORT:-$DEFAULT_PORT}
+
+    log_info "Generating files and web files..."
+    mkdir -p .data/servers public plugins
 
     cat <<EOF > package.json
 {
   "name": "cjh-panel",
-  "version": "3.0.0",
+  "version": "3.5.0",
   "main": "server.js",
   "dependencies": {
     "express": "^4.18.2",
@@ -119,6 +122,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { exec, spawn } = require('child_process');
 const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -127,7 +131,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.json());
 app.use(express.static('public'));
 
-let config = { port: 6767, admin_user: "admin", admin_pass: "admin" };
+let config = { port: 6767, admin_user: "admin", admin_pass: "admin123" };
 if (fs.existsSync('config.json')) {
     config = JSON.parse(fs.readFileSync('config.json'));
 }
@@ -137,7 +141,7 @@ app.post('/api/login', (req, res) => {
     if (username === config.admin_user && password === config.admin_pass) {
         res.json({ success: true, token: "cjh-authenticated-session" });
     } else {
-        res.status(401).json({ success: false, message: "Invalid credentials" });
+        res.status(401).json({ success: false, message: "Invalid Admin Credentials" });
     }
 });
 
@@ -153,7 +157,7 @@ io.on('connection', (socket) => {
 
     socket.on('start-server', (data) => {
         const { serverPort } = data;
-        socket.emit('console-log', `[SYSTEM] Starting Server on Port ${serverPort}...`);
+        socket.emit('console-log', `[SYSTEM] Initializing Game Server on Port ${serverPort}...`);
         
         const process = spawn('docker', ['run', '-i', '--rm', '-p', `${serverPort}:25565`, 'itzg/minecraft-server']);
 
@@ -167,7 +171,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(config.port, '0.0.0.0', () => {
-    console.log(`CJH Panel Running on Port ${config.port}`);
+    console.log(`CJH Panel running on http://0.0.0.0:${config.port}`);
 });
 EOF
 
@@ -176,30 +180,37 @@ EOF
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CJH Panel - Dashboard</title>
+    <title>CJH Panel Dashboard v3.5</title>
     <style>
-        body { background-color: #0d1117; color: #c9d1d9; font-family: monospace; padding: 20px; }
-        .card { background: #161b22; border: 1px solid #30363d; padding: 20px; border-radius: 6px; margin-bottom: 15px; }
-        input, button { padding: 8px 12px; margin: 5px 0; background: #21262d; border: 1px solid #30363d; color: #fff; border-radius: 4px; }
-        button { background: #238636; cursor: pointer; font-weight: bold; }
-        #console { background: #000; color: #3fb950; height: 260px; overflow-y: auto; padding: 10px; border-radius: 4px; border: 1px solid #30363d; }
+        body { background-color: #0d1117; color: #c9d1d9; font-family: system-ui, sans-serif; padding: 20px; margin: 0; }
+        .container { max-width: 900px; margin: auto; }
+        .card { background: #161b22; border: 1px solid #30363d; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        input, button { padding: 10px; margin: 5px 0; background: #21262d; border: 1px solid #30363d; color: #fff; border-radius: 5px; }
+        button { background: #238636; cursor: pointer; font-weight: bold; border: none; }
+        button:hover { background: #2ea043; }
+        #console { background: #000; color: #3fb950; height: 280px; overflow-y: auto; padding: 10px; border-radius: 6px; font-family: monospace; border: 1px solid #30363d; }
     </style>
 </head>
 <body>
-    <h1>CJH Panel Dashboard v3.0</h1>
-    <div class="card">
-        <h3>Server Management</h3>
-        <label>Server Port: </label>
-        <input type="number" id="port" value="25565">
-        <button onclick="startServer()">Start Game Server</button>
-        <button onclick="setupTunnel()">Generate Playit Tunnel</button>
-    </div>
+    <div class="container">
+        <h1>CJH Panel v3.5 - Dashboard</h1>
+        
+        <div class="card">
+            <h3>Server Controls</h3>
+            <label>Port Assignment: </label>
+            <input type="number" id="port" value="25565">
+            <button onclick="startServer()">Start Game Server</button>
+            <button onclick="setupTunnel()">Generate Playit Tunnel</button>
+        </div>
 
-    <div class="card">
-        <h3>Live Server Console</h3>
-        <div id="console"></div>
-        <input type="text" id="cmd" placeholder="Enter command..." style="width: 75%;">
-        <button onclick="sendCmd()">Send</button>
+        <div class="card">
+            <h3>Live Game Console</h3>
+            <div id="console"></div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <input type="text" id="cmd" placeholder="Type command here..." style="flex: 1;">
+                <button onclick="sendCmd()">Send Command</button>
+            </div>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -226,7 +237,7 @@ EOF
         function setupTunnel() {
             fetch('/api/playit/setup', { method: 'POST' })
             .then(res => res.json())
-            .then(d => alert('Tunnel Response: ' + JSON.stringify(d)));
+            .then(d => alert('Playit Link Response:\n' + JSON.stringify(d, null, 2)));
         }
     </script>
 </body>
@@ -235,7 +246,7 @@ EOF
 }
 
 start_panel_service() {
-    log_info "Starting Panel Service..."
+    log_info "Starting Service via PM2 / Node..."
     if command -v pm2 &> /dev/null; then
         pm2 delete cjh-panel 2>/dev/null || true
         pm2 start server.js --name "cjh-panel"
@@ -248,17 +259,17 @@ start_panel_service() {
 install_process() {
     print_banner
     check_deps
-    install_docker_playit
+    install_playit
     install_node
     setup_application
     start_panel_service
 
     IP=$(curl -s ifconfig.me 2>/dev/null || echo "localhost")
-    log_success "CJH Panel installed successfully!"
+    log_success "CJH Panel installed and running!"
     echo -e "${GREEN}"
-    echo "✓ Web URL: http://${IP}:${PORT}"
-    echo "✓ Active Port: ${PORT} (Check PORTS tab in CodeSandbox)"
-    echo "✓ Live Console: Connected via Socket.io"
+    echo "✓ Panel Web Link: http://${IP}:${PORT:-6767}"
+    echo "✓ Check CodeSandbox 'PORTS' tab for the web preview link."
+    echo "✓ Admin Username: ${ADMIN_USER:-admin}"
     echo -e "${NC}"
 }
 
@@ -271,11 +282,23 @@ update_process() {
     log_success "CJH Panel updated successfully!"
 }
 
-# Main Option Menu
+# Auto-mode for Direct Commands (Auto Install)
+if [ "$1" == "1" ] || [ "$1" == "install" ]; then
+    install_process
+    exit 0
+elif [ "$1" == "2" ] || [ "$1" == "update" ]; then
+    update_process
+    exit 0
+fi
+
+# Main Interactive Menu
 print_banner
 echo -e "  ${BOLD}1)${NC} Panel Install"
 echo -e "  ${BOLD}2)${NC} Panel Update"
 echo ""
+
+# Connect directly to terminal input stream
+exec < /dev/tty 2>/dev/null || true
 read -p " Choose an option (1-2): " OPTION
 
 case "$OPTION" in
