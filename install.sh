@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v4.5 - Auto Server Creation & Cloud Fix
+# CJH PANEL v4.5 - Auto Web UI & Server Installer
 # =========================================================
 
 set -e
@@ -71,7 +71,7 @@ case $OPTION in
 
         echo -e "\n${CYAN}[INFO] Saving Configurations...${NC}"
 
-        # Save Config JSON
+        # 1. Save Config JSON
         cat <<EOF > config.json
 {
   "admin_user": "$ADMIN_USER",
@@ -80,7 +80,7 @@ case $OPTION in
 }
 EOF
 
-        # Save Package JSON
+        # 2. Save Package JSON
         cat <<EOF > package.json
 {
   "name": "cjh-panel",
@@ -94,9 +94,61 @@ EOF
 }
 EOF
 
+        # 3. Create Public Folder & index.html (Fix for Cannot GET /)
         mkdir -p public
+        if [ ! -f "public/index.html" ]; then
+            echo -e "${CYAN}[INFO] Creating Web Dashboard (public/index.html)...${NC}"
+            cat <<'EOF' > public/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CJH Panel v4.5</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background-color: #1e293b;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 320px;
+        }
+        h1 { color: #38bdf8; margin-bottom: 0.5rem; }
+        p { color: #94a3b8; font-size: 0.9rem; }
+        .status {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background-color: #166534;
+            color: #4ade80;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>CJH PANEL v4.5</h1>
+        <p>Cloud Hosting Interface</p>
+        <div class="status">System Online</div>
+    </div>
+</body>
+</html>
+EOF
+        fi
 
-        # Generate server.js automatically if missing
+        # 4. Generate server.js automatically
         if [ ! -f "server.js" ]; then
             echo -e "${CYAN}[INFO] Generating server.js entrypoint...${NC}"
             cat <<'EOF' > server.js
