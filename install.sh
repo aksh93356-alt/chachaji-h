@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v4.5 - Auto Node/NPM Installer & Cloud Fix
+# CJH PANEL v4.5 - Auto Server Creation & Cloud Fix
 # =========================================================
 
 set -e
@@ -39,27 +39,6 @@ fi
 
 case $OPTION in
     1)
-        # ----------------------------------------------------
-        # Node.js and NPM Environment Check & Auto-Install
-        # ----------------------------------------------------
-        if ! command -v npm &> /dev/null; then
-            echo -e "${YELLOW}[WARN] Node.js/NPM not found. Installing Node.js automatically...${NC}"
-            if command -v apt-get &> /dev/null; then
-                sudo apt-get update -y > /dev/null 2>&1 || true
-                sudo apt-get install -y nodejs npm > /dev/null 2>&1 || true
-            elif command -v yum &> /dev/null; then
-                sudo yum install -y nodejs npm > /dev/null 2>&1 || true
-            elif command -v apk &> /dev/null; then
-                sudo apk add --no-cache nodejs npm > /dev/null 2>&1 || true
-            fi
-        fi
-
-        # Re-check if npm is available after attempting auto-install
-        if ! command -v npm &> /dev/null; then
-            echo -e "${RED}[ERROR] Could not automatically install npm. Please install Node.js/npm manually in your environment.${NC}"
-            exit 1
-        fi
-
         echo -e "\n${CYAN}=== ADMIN ACCOUNT SETUP ===${NC}"
 
         get_input() {
@@ -92,6 +71,7 @@ case $OPTION in
 
         echo -e "\n${CYAN}[INFO] Saving Configurations...${NC}"
 
+        # Save Config JSON
         cat <<EOF > config.json
 {
   "admin_user": "$ADMIN_USER",
@@ -100,6 +80,7 @@ case $OPTION in
 }
 EOF
 
+        # Save Package JSON
         cat <<EOF > package.json
 {
   "name": "cjh-panel",
@@ -114,6 +95,48 @@ EOF
 EOF
 
         mkdir -p public
+
+        # Generate server.js automatically if missing
+        if [ ! -f "server.js" ]; then
+            echo -e "${CYAN}[INFO] Generating server.js entrypoint...${NC}"
+            cat <<'EOF' > server.js
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
+const fs = require('fs');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+let config = { admin_user: "admin", admin_pass: "admin123", port: 6767 };
+if (fs.existsSync('./config.json')) {
+    try {
+        config = JSON.parse(fs.readFileSync('./config.json'));
+    } catch (e) {
+        console.error("Error reading config.json", e);
+    }
+}
+
+app.get('/api/status', (req, res) => {
+    res.json({ status: "online", panel: "CJH Panel v4.5" });
+});
+
+const PORT = process.env.PORT || config.port || 6767;
+
+server.listen(PORT, () => {
+    console.log(`\n==================================================`);
+    console.log(` CJH PANEL IS NOW RUNNING!`);
+    console.log(` Web Server Port : ${PORT}`);
+    console.log(`==================================================\n`);
+});
+EOF
+        fi
 
         echo -e "${CYAN}[INFO] Installing Node.js packages...${NC}"
         npm install
