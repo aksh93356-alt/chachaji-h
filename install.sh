@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v4.5 - Full Interactive Admin Dashboard
+# CJH PANEL v4.5 - Advanced Role-Based Dashboard Setup
 # =========================================================
 
 set -e
@@ -71,7 +71,6 @@ case $OPTION in
 
         echo -e "\n${CYAN}[INFO] Saving Configurations...${NC}"
 
-        # 1. Save Config JSON
         cat <<EOF > config.json
 {
   "admin_user": "$ADMIN_USER",
@@ -80,7 +79,6 @@ case $OPTION in
 }
 EOF
 
-        # 2. Save Package JSON
         cat <<EOF > package.json
 {
   "name": "cjh-panel",
@@ -94,176 +92,196 @@ EOF
 }
 EOF
 
-        # 3. Create Public Folder & Interactive Login Dashboard
         mkdir -p public
-        echo -e "${CYAN}[INFO] Creating Full Web UI Dashboard...${NC}"
+        echo -e "${CYAN}[INFO] Generating Role-Based UI Dashboard...${NC}"
+        
         cat <<'EOF' > public/index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CJH Panel v4.5</title>
+    <title>JTG PANEL</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b0f19; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #050505; color: #a1a1aa; height: 100vh; display: flex; overflow: hidden; }
         
-        /* LOGIN PAGE */
-        #login-container { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; }
-        .login-box { background: #161e2e; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 360px; text-align: center; border: 1px solid #2d3748; }
-        .login-box h2 { color: #38bdf8; margin-bottom: 0.5rem; }
-        .login-box p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.5rem; }
-        .input-group { margin-bottom: 1.2rem; text-align: left; }
-        .input-group label { display: block; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 0.3rem; }
-        .input-group input { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; }
-        .btn-login { width: 100%; padding: 0.75rem; border: none; border-radius: 6px; background: #0284c7; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-login:hover { background: #0369a1; }
-        .error-msg { color: #f87171; font-size: 0.85rem; margin-top: 1rem; display: none; }
+        /* LOGIN */
+        #login-view { position: fixed; inset: 0; background: #050505; display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .login-card { background: #09090b; border: 1px solid #27272a; padding: 2rem; border-radius: 8px; width: 340px; text-align: center; }
+        .login-card h2 { color: #f4f4f5; font-size: 1.5rem; letter-spacing: 2px; margin-bottom: 0.5rem; }
+        .login-card input { width: 100%; padding: 0.6rem; margin: 0.5rem 0; background: #18181b; border: 1px solid #27272a; color: #fff; border-radius: 4px; outline: none; }
+        .login-card button { width: 100%; padding: 0.6rem; background: #e11d48; border: none; color: white; font-weight: bold; border-radius: 4px; cursor: pointer; margin-top: 0.8rem; }
 
-        /* DASHBOARD PAGE */
-        #dashboard-container { display: none; height: 100vh; flex-direction: row; }
-        .sidebar { width: 240px; background: #111827; border-right: 1px solid #1f2937; padding: 1.5rem 1rem; display: flex; flex-direction: column; }
-        .sidebar h2 { color: #38bdf8; font-size: 1.2rem; margin-bottom: 2rem; text-align: center; }
-        .nav-btn { background: transparent; border: none; color: #9ca3af; padding: 0.8rem 1rem; text-align: left; font-size: 0.95rem; border-radius: 6px; cursor: pointer; margin-bottom: 0.5rem; width: 100%; transition: 0.2s; }
-        .nav-btn.active, .nav-btn:hover { background: #1f2937; color: #38bdf8; font-weight: bold; }
-        .logout-btn { margin-top: auto; background: #991b1b; color: white; }
+        /* MAIN WRAPPER */
+        #app-view { display: none; width: 100vw; height: 100vh; }
+        .sidebar { width: 220px; background: #09090b; border-right: 1px solid #18181b; padding: 1rem; display: flex; flex-direction: column; }
+        .brand { color: #f4f4f5; font-weight: bold; letter-spacing: 1px; padding: 0.5rem; margin-bottom: 1.5rem; font-size: 1rem; }
         
-        .main-content { flex: 1; padding: 2rem; overflow-y: auto; background: #0b0f19; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1f2937; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-        .header h1 { font-size: 1.5rem; color: #f3f4f6; }
+        .nav-item { padding: 0.6rem 0.8rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #71717a; cursor: pointer; border-radius: 4px; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 8px; }
+        .nav-item:hover, .nav-item.active { background: #18181b; color: #f4f4f5; }
         
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .admin-only { display: none; } /* Hidden for Normal Users */
         
-        .card { background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid #374151; margin-bottom: 1rem; }
-        .console-box { background: #000; color: #4ade80; font-family: monospace; padding: 1rem; border-radius: 6px; height: 350px; overflow-y: auto; font-size: 0.9rem; }
+        .user-badge { margin-top: auto; padding: 0.8rem; background: #18181b; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .user-info { font-size: 0.75rem; color: #f4f4f5; font-weight: bold; }
+
+        .content-area { flex: 1; background: #050505; padding: 2rem; overflow-y: auto; }
+        .panel-section { display: none; }
+        .panel-section.active { display: block; }
+        
+        h1.sec-title { color: #f4f4f5; font-size: 1.8rem; margin-bottom: 1rem; text-transform: uppercase; }
+        .card { background: #09090b; border: 1px solid #18181b; padding: 1.5rem; border-radius: 6px; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN FORM -->
-    <div id="login-container">
-        <div class="login-box">
-            <h2>CJH PANEL v4.5</h2>
-            <p>Admin Login Required</p>
-            <div class="input-group">
-                <label>Username</label>
-                <input type="text" id="username" placeholder="Enter username">
-            </div>
-            <div class="input-group">
-                <label>Password</label>
-                <input type="password" id="password" placeholder="Enter password">
-            </div>
-            <button class="btn-login" onclick="login()">Login to Dashboard</button>
-            <p id="err-msg" class="error-msg">Invalid Username or Password!</p>
+    <!-- LOGIN OVERLAY -->
+    <div id="login-view">
+        <div class="login-card">
+            <h2>JTG PANEL</h2>
+            <p style="font-size:0.75rem; color:#71717a; margin-bottom:1rem;">ENTER CREDENTIALS</p>
+            <input type="text" id="u-input" placeholder="Username">
+            <input type="password" id="p-input" placeholder="Password">
+            <button onclick="handleLogin()">ACCESS PANEL</button>
         </div>
     </div>
 
-    <!-- MAIN DASHBOARD -->
-    <div id="dashboard-container">
+    <!-- MAIN APP INTERFACE -->
+    <div id="app-view">
         <div class="sidebar">
-            <h2>CJH PANEL</h2>
-            <button class="nav-btn active" onclick="switchTab('my-server', this)">My Server</button>
-            <button class="nav-btn" onclick="switchTab('console', this)">Console</button>
-            <button class="nav-btn" onclick="switchTab('settings', this)">Settings</button>
-            <button class="nav-btn logout-btn" onclick="logout()">Logout</button>
+            <div class="brand">⚡ JTG PANEL</div>
+            
+            <!-- ACCESSIBLE BY EVERYONE -->
+            <div class="nav-item active" onclick="showTab('overview', this)">Overview</div>
+            <div class="nav-item" onclick="showTab('servers', this)">Servers</div>
+
+            <!-- ADMIN ONLY TABS -->
+            <div class="nav-item admin-only" onclick="showTab('nodes', this)">Nodes</div>
+            <div class="nav-item admin-only" onclick="showTab('deploy', this)">+ Deploy</div>
+            <div class="nav-item admin-only" onclick="showTab('fleet', this)">Fleet</div>
+            <div class="nav-item admin-only" onclick="showTab('apikeys', this)">API Keys</div>
+            <div class="nav-item admin-only" onclick="showTab('admin-settings', this)">Admin Settings</div>
+
+            <!-- ACCESSIBLE BY EVERYONE -->
+            <div class="nav-item" onclick="showTab('account', this)">Account</div>
+
+            <div class="user-badge">
+                <div>
+                    <div class="user-info" id="display-user">User</div>
+                    <div style="font-size:0.65rem; color:#71717a;" id="display-role">Member</div>
+                </div>
+                <span style="cursor:pointer; color:#ef4444; font-size:0.8rem;" onclick="location.reload()">➔</span>
+            </div>
         </div>
 
-        <div class="main-content">
-            <div class="header">
-                <h1 id="tab-title">My Server</h1>
-                <span style="color: #4ade80; font-weight: bold;">● Online</span>
-            </div>
-
-            <!-- TAB 1: MY SERVER -->
-            <div id="my-server" class="tab-content active">
+        <div class="content-area">
+            <!-- OVERVIEW -->
+            <div id="overview" class="panel-section active">
+                <h1 class="sec-title">My Servers</h1>
                 <div class="card">
-                    <h3>Server Controls</h3>
-                    <p style="margin-top: 0.5rem;">Manage your cloud instance actions below:</p>
-                    <div style="margin-top: 1rem; display: flex; gap: 10px;">
-                        <button style="padding: 0.6rem 1.2rem; background: #16a34a; border:none; color:white; border-radius:4px; cursor:pointer;" onclick="alert('Server Started!')">Start Server</button>
-                        <button style="padding: 0.6rem 1.2rem; background: #dc2626; border:none; color:white; border-radius:4px; cursor:pointer;" onclick="alert('Server Stopped!')">Stop Server</button>
-                        <button style="padding: 0.6rem 1.2rem; background: #d97706; border:none; color:white; border-radius:4px; cursor:pointer;" onclick="alert('Server Restarting...')">Restart</button>
-                    </div>
+                    <h3 style="color:#f4f4f5;">Active Instances</h3>
+                    <p style="margin-top:0.5rem; font-size:0.85rem;">01 chachaji - [LOCAL SERVER ONLINE]</p>
                 </div>
             </div>
 
-            <!-- TAB 2: CONSOLE -->
-            <div id="console" class="tab-content">
+            <!-- SERVERS -->
+            <div id="servers" class="panel-section">
+                <h1 class="sec-title">Servers List</h1>
+                <div class="card"><p>Your assigned server instances will appear here.</p></div>
+            </div>
+
+            <!-- NODES (ADMIN ONLY) -->
+            <div id="nodes" class="panel-section">
+                <h1 class="sec-title">Nodes Monitor</h1>
+                <div class="card"><p>Built-in Node (Local) - CPU: 0% | RAM: 19% | DISK: 47%</p></div>
+            </div>
+
+            <!-- DEPLOY (ADMIN ONLY) -->
+            <div id="deploy" class="panel-section">
+                <h1 class="sec-title">Deploy Server</h1>
+                <div class="card"><p>Server deployment options and wizard.</p></div>
+            </div>
+
+            <!-- FLEET (ADMIN ONLY) -->
+            <div id="fleet" class="panel-section">
+                <h1 class="sec-title">Fleet Operations</h1>
+                <div class="card"><p>Fleet metrics and node linking.</p></div>
+            </div>
+
+            <!-- API KEYS (ADMIN ONLY) -->
+            <div id="apikeys" class="panel-section">
+                <h1 class="sec-title">API Keys Management</h1>
+                <div class="card"><p>Generate or invalidate developer API keys.</p></div>
+            </div>
+
+            <!-- ADMIN SETTINGS (ADMIN ONLY) -->
+            <div id="admin-settings" class="panel-section">
+                <h1 class="sec-title">Admin Settings</h1>
                 <div class="card">
-                    <h3>Realtime Console Output</h3>
-                    <div class="console-box" id="console-logs">
-                        [SYSTEM] CJH Panel Server Initialized...<br>
-                        [SYSTEM] Node.js process running on active port.<br>
-                        [AUTH] Admin user authenticated successfully.<br>
-                        [STATUS] WebSockets connected. Ready for commands...
-                    </div>
+                    <h3 style="color:#f4f4f5; margin-bottom:0.5rem;">Branding & Panel Settings</h3>
+                    <p style="font-size:0.85rem;">Full control features, theme appearance, and user management.</p>
                 </div>
             </div>
 
-            <!-- TAB 3: SETTINGS -->
-            <div id="settings" class="tab-content">
-                <div class="card">
-                    <h3>Panel Configuration Settings</h3>
-                    <p style="margin-top: 0.5rem; color: #9ca3af;">Admin full control panel configurations.</p>
-                </div>
+            <!-- ACCOUNT -->
+            <div id="account" class="panel-section">
+                <h1 class="sec-title">Account Settings</h1>
+                <div class="card"><p>Update user profile and password options.</p></div>
             </div>
         </div>
     </div>
 
     <script>
-        async function login() {
-            const user = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
-            
+        async function handleLogin() {
+            const user = document.getElementById('u-input').value;
+            const pass = document.getElementById('p-input').value;
+
             const res = await fetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ user, pass })
             });
 
             const data = await res.json();
-            if(data.success) {
-                document.getElementById('login-container').style.display = 'none';
-                document.getElementById('dashboard-container').style.display = 'flex';
+            if (data.success) {
+                document.getElementById('login-view').style.display = 'none';
+                document.getElementById('app-view').style.display = 'flex';
+                
+                document.getElementById('display-user').innerText = user;
+                document.getElementById('display-role').innerText = data.role;
+
+                // Show Admin Controls ONLY if Role is Admin
+                if (data.role === 'Admin') {
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
+                } else {
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+                }
             } else {
-                document.getElementById('err-msg').style.display = 'block';
+                alert('Invalid Credentials!');
             }
         }
 
-        function switchTab(tabId, btn) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-            
+        function showTab(tabId, btn) {
+            document.querySelectorAll('.panel-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
-            
-            let title = "My Server";
-            if(tabId === 'console') title = "Console";
-            if(tabId === 'settings') title = "Settings";
-            document.getElementById('tab-title').innerText = title;
-        }
-
-        function logout() {
-            location.reload();
         }
     </script>
 </body>
 </html>
 EOF
 
-        # 4. Generate server.js with Login API Route
-        echo -e "${CYAN}[INFO] Updating server.js with Login Authentication...${NC}"
         cat <<'EOF' > server.js
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(cors());
 app.use(express.json());
@@ -274,15 +292,22 @@ if (fs.existsSync('./config.json')) {
     try {
         config = JSON.parse(fs.readFileSync('./config.json'));
     } catch (e) {
-        console.error("Error reading config.json", e);
+        console.error("Config load error", e);
     }
 }
 
 app.post('/api/login', (req, res) => {
     const { user, pass } = req.body;
+    
+    // Check Admin Login
     if (user === config.admin_user && pass === config.admin_pass) {
-        return res.json({ success: true, message: "Authenticated successfully" });
+        return res.json({ success: true, role: "Admin" });
+    } 
+    // Default Member Login Support
+    else if (user === "user" && pass === "user123") {
+        return res.json({ success: true, role: "Member" });
     }
+    
     return res.json({ success: false, message: "Invalid credentials" });
 });
 
@@ -290,39 +315,36 @@ const PORT = process.env.PORT || config.port || 6767;
 
 server.listen(PORT, () => {
     console.log(`\n==================================================`);
-    console.log(` CJH PANEL IS NOW RUNNING!`);
-    console.log(` Web Server Port : ${PORT}`);
+    console.log(` JTG PANEL IS RUNNING ON PORT : ${PORT}`);
     console.log(`==================================================\n`);
 });
 EOF
 
-        echo -e "${CYAN}[INFO] Installing Node.js packages...${NC}"
+        echo -e "${CYAN}[INFO] Installing dependencies...${NC}"
         npm install
 
         echo -e "\n${GREEN}=================================================="
         echo " CJH PANEL INSTALLED SUCCESSFULLY!"
-        echo " Admin User : ${ADMIN_USER}"
-        echo " Admin Pass : ${ADMIN_PASS}"
-        echo " Port       : ${PORT}"
+        echo " Admin User  : ${ADMIN_USER}"
+        echo " Admin Pass  : ${ADMIN_PASS}"
+        echo " Member User : user"
+        echo " Member Pass : user123"
+        echo " Port        : ${PORT}"
         echo "==================================================${NC}\n"
 
-        echo -e "${CYAN}[INFO] Starting CJH Panel server...${NC}"
         node server.js
         ;;
     2)
-        echo -e "\n${CYAN}[INFO] Restarting CJH Panel...${NC}"
         pkill -f "node server.js" 2>/dev/null || true
         node server.js
         ;;
     3)
-        echo -e "\n${CYAN}[INFO] Logs are streaming directly via Node process.${NC}"
+        echo -e "\n${CYAN}[INFO] Streaming server logs...${NC}"
         ;;
     4)
-        echo -e "\n${YELLOW}Exiting installer.${NC}"
         exit 0
         ;;
     *)
-        echo -e "\n${RED}Invalid option selected. Exiting.${NC}"
         exit 1
         ;;
 esac
