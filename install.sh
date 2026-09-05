@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v4.5 - Numbered Interactive Installer
+# CJH PANEL v4.5 - Interactive & Direct Input Installer
 # =========================================================
 
 set -e
@@ -21,32 +21,57 @@ echo "║        Full Cloud Hosting Interface          ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-echo -e "${YELLOW}Choose an option from the menu below:${NC}\n"
-echo -e "  ${GREEN}[1]${NC} Install CJH Panel (Full Setup)"
-echo -e "  ${GREEN}[2]${NC} Restart Panel Service"
-echo -e "  ${GREEN}[3]${NC} View Panel Logs"
-echo -e "  ${GREEN}[4]${NC} Exit Setup\n"
+# Check if an argument was passed (e.g. bash install.sh 1)
+OPTION=$1
 
-# Ensure terminal input stream works properly
-exec < /dev/tty 2>/dev/null || true
+if [ -z "$OPTION" ]; then
+    echo -e "${YELLOW}Choose an option from the menu below:${NC}\n"
+    echo -e "  ${GREEN}[1]${NC} Install CJH Panel (Full Setup)"
+    echo -e "  ${GREEN}[2]${NC} Restart Panel Service"
+    echo -e "  ${GREEN}[3]${NC} View Panel Logs"
+    echo -e "  ${GREEN}[4]${NC} Exit Setup\n"
 
-read -p "Enter your choice [1-4]: " OPTION
+    # Try to open controlling terminal for input
+    if [ -t 0 ]; then
+        read -p "Enter your choice [1-4]: " OPTION
+    else
+        # If piped via curl, force read from /dev/tty
+        read -p "Enter your choice [1-4]: " OPTION < /dev/tty || OPTION="1"
+    fi
+fi
 
 case $OPTION in
     1)
         echo -e "\n${CYAN}=== ADMIN ACCOUNT SETUP ===${NC}"
-        
+
+        # Function to read input safely
+        get_input() {
+            local prompt="$1"
+            local default="$2"
+            local var_name="$3"
+            local user_val
+
+            if [ -t 0 ]; then
+                read -p "$prompt [default: $default]: " user_val
+            else
+                read -p "$prompt [default: $default]: " user_val < /dev/tty || user_val=""
+            fi
+
+            if [ -z "$user_val" ]; then
+                eval "$var_name=\"$default\""
+            else
+                eval "$var_name=\"$user_val\""
+            fi
+        }
+
         echo -e "\n${MAGENTA}--> Step 1: Type your desired Admin Username${NC}"
-        read -p "Admin Username [default: admin]: " ADMIN_USER
-        ADMIN_USER=${ADMIN_USER:-admin}
+        get_input "Admin Username" "admin" ADMIN_USER
 
         echo -e "\n${MAGENTA}--> Step 2: Type your desired Admin Password${NC}"
-        read -p "Admin Password [default: admin123]: " ADMIN_PASS
-        ADMIN_PASS=${ADMIN_PASS:-admin123}
+        get_input "Admin Password" "admin123" ADMIN_PASS
 
         echo -e "\n${MAGENTA}--> Step 3: Type Port Number for Web Panel${NC}"
-        read -p "Panel Port [default: 6767]: " PORT
-        PORT=${PORT:-6767}
+        get_input "Panel Port" "6767" PORT
 
         echo -e "\n${CYAN}[INFO] Saving Configurations...${NC}"
 
@@ -85,6 +110,7 @@ EOF
             pm2 start server.js --name "cjh-panel"
             pm2 save --force > /dev/null 2>&1 || true
         else
+            pkill -f "node server.js" 2>/dev/null || true
             node server.js &
         fi
 
@@ -102,7 +128,7 @@ EOF
         if command -v pm2 &> /dev/null; then
             pm2 restart cjh-panel
         else
-            pkill -f server.js || true
+            pkill -f "node server.js" || true
             node server.js &
         fi
         echo -e "${GREEN}[SUCCESS] Panel Restarted!${NC}"
