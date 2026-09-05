@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v4.5 - Interactive & Direct Input Installer
+# CJH PANEL v4.5 - Cloud Execution Fix
 # =========================================================
 
 set -e
@@ -21,7 +21,6 @@ echo "║        Full Cloud Hosting Interface          ║"
 echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-# Check if an argument was passed (e.g. bash install.sh 1)
 OPTION=$1
 
 if [ -z "$OPTION" ]; then
@@ -31,11 +30,9 @@ if [ -z "$OPTION" ]; then
     echo -e "  ${GREEN}[3]${NC} View Panel Logs"
     echo -e "  ${GREEN}[4]${NC} Exit Setup\n"
 
-    # Try to open controlling terminal for input
     if [ -t 0 ]; then
         read -p "Enter your choice [1-4]: " OPTION
     else
-        # If piped via curl, force read from /dev/tty
         read -p "Enter your choice [1-4]: " OPTION < /dev/tty || OPTION="1"
     fi
 fi
@@ -44,7 +41,6 @@ case $OPTION in
     1)
         echo -e "\n${CYAN}=== ADMIN ACCOUNT SETUP ===${NC}"
 
-        # Function to read input safely
         get_input() {
             local prompt="$1"
             local default="$2"
@@ -75,7 +71,6 @@ case $OPTION in
 
         echo -e "\n${CYAN}[INFO] Saving Configurations...${NC}"
 
-        # Save Config JSON
         cat <<EOF > config.json
 {
   "admin_user": "$ADMIN_USER",
@@ -84,7 +79,6 @@ case $OPTION in
 }
 EOF
 
-        # Save Package JSON
         cat <<EOF > package.json
 {
   "name": "cjh-panel",
@@ -101,45 +95,25 @@ EOF
         mkdir -p public
 
         echo -e "${CYAN}[INFO] Installing Node.js packages...${NC}"
-        npm install --silent > /dev/null 2>&1
-
-        echo -e "${GREEN}[SUCCESS] Setup completed! Launching server...${NC}"
-
-        if command -v pm2 &> /dev/null; then
-            pm2 delete cjh-panel 2>/dev/null || true
-            pm2 start server.js --name "cjh-panel"
-            pm2 save --force > /dev/null 2>&1 || true
-        else
-            pkill -f "node server.js" 2>/dev/null || true
-            node server.js &
-        fi
-
-        IP=$(curl -s ifconfig.me 2>/dev/null || echo "localhost")
+        npm install
 
         echo -e "\n${GREEN}=================================================="
-        echo " CJH PANEL IS NOW ONLINE!"
-        echo " Web Access : http://${IP}:${PORT}"
+        echo " CJH PANEL INSTALLED SUCCESSFULLY!"
         echo " Admin User : ${ADMIN_USER}"
         echo " Admin Pass : ${ADMIN_PASS}"
+        echo " Port       : ${PORT}"
         echo "==================================================${NC}\n"
+
+        echo -e "${CYAN}[INFO] Starting CJH Panel server...${NC}"
+        node server.js
         ;;
     2)
         echo -e "\n${CYAN}[INFO] Restarting CJH Panel...${NC}"
-        if command -v pm2 &> /dev/null; then
-            pm2 restart cjh-panel
-        else
-            pkill -f "node server.js" || true
-            node server.js &
-        fi
-        echo -e "${GREEN}[SUCCESS] Panel Restarted!${NC}"
+        pkill -f "node server.js" 2>/dev/null || true
+        node server.js
         ;;
     3)
-        echo -e "\n${CYAN}[INFO] Fetching Logs...${NC}"
-        if command -v pm2 &> /dev/null; then
-            pm2 logs cjh-panel --lines 20
-        else
-            echo "Logs are displayed in active node process."
-        fi
+        echo -e "\n${CYAN}[INFO] Logs are streaming directly via Node process.${NC}"
         ;;
     4)
         echo -e "\n${YELLOW}Exiting installer.${NC}"
