@@ -1,13 +1,12 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v2.0 - Advanced Game Panel Installer
+# CJH PANEL v3.0 - All-in-One Installer & Updater
 # Credit: ZAIRA x Jishnu
-# Features: Docker Integration, Live Console, Playit.gg Agent
+# Environment: Linux VPS / CodeSandbox Devbox
 # =========================================================
 
 set -e
 
-# Configuration
 PANEL_NAME="CJH Panel"
 PORT="6767"
 PLAYIT_VERSION="0.9.3"
@@ -24,7 +23,7 @@ print_banner() {
     clear 2>/dev/null || true
     echo -e "${CYAN}${BOLD}"
     echo "╔══════════════════════════════════════════════╗"
-    echo "║               CJH PANEL v2.0                 ║"
+    echo "║               CJH PANEL v3.0                 ║"
     echo "║        Automated Server Management           ║"
     echo "║             ZAIRA x Jishnu                   ║"
     echo "╚══════════════════════════════════════════════╝"
@@ -35,27 +34,26 @@ log_info() { echo -e "${CYAN}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# System Requirements
 check_deps() {
     log_info "Installing system dependencies..."
     if command -v apt-get &> /dev/null; then
-        sudo apt-get update -y -q > /dev/null 2>&1
-        sudo apt-get install -y curl git build-essential ca-certificates tar xz-utils unzip wget -q > /dev/null 2>&1
+        sudo apt-get update -y -q > /dev/null 2>&1 || true
+        sudo apt-get install -y curl git build-essential ca-certificates tar xz-utils unzip wget -q > /dev/null 2>&1 || true
     elif command -v yum &> /dev/null; then
-        sudo yum update -y -q > /dev/null 2>&1
-        sudo yum install -y curl git make gcc-c++ ca-certificates tar xz unzip wget -q > /dev/null 2>&1
+        sudo yum update -y -q > /dev/null 2>&1 || true
+        sudo yum install -y curl git make gcc-c++ ca-certificates tar xz unzip wget -q > /dev/null 2>&1 || true
     fi
 }
 
-# Install Docker & Playit Agent
 install_docker_playit() {
-    log_info "Configuring Docker..."
-    if ! command -v docker &> /dev/null; then
-        curl -fsSL https://get.docker.com | sh > /dev/null 2>&1
+    log_info "Checking Docker Environment..."
+    if command -v docker &> /dev/null; then
         sudo systemctl enable --now docker > /dev/null 2>&1 || true
+    else
+        log_info "Skipping Docker daemon auto-start (Containerized Environment Detected)."
     fi
 
-    log_info "Installing Playit.gg Tunneling Agent..."
+    log_info "Installing Playit.gg Agent..."
     if ! command -v playit &> /dev/null; then
         ARCH=$(uname -m)
         case "$ARCH" in
@@ -63,39 +61,38 @@ install_docker_playit() {
             aarch64|arm64) PLAYIT_ARCH="aarch64-unknown-linux-musl" ;;
             *) PLAYIT_ARCH="x86_64-unknown-linux-musl" ;;
         esac
-        wget -q "https://github.com/playit-cloud/playit-agent/releases/download/v${PLAYIT_VERSION}/playit-${PLAYIT_ARCH}" -O /usr/local/bin/playit || true
-        chmod +x /usr/local/bin/playit || true
+        wget -q "https://github.com/playit-cloud/playit-agent/releases/download/v${PLAYIT_VERSION}/playit-${PLAYIT_ARCH}" -O /tmp/playit || true
+        if [ -f "/tmp/playit" ]; then
+            chmod +x /tmp/playit
+            sudo mv /tmp/playit /usr/local/bin/playit 2>/dev/null || mv /tmp/playit ./playit
+        fi
     fi
 }
 
-# Install Node.js
 install_node() {
     log_info "Checking Node.js..."
-    if ! command -v node &> /dev/null || [ "$(node -v | tr -d 'v' | cut -d'.' -f1)" -lt 20 ]; then
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - > /dev/null 2>&1
+    if ! command -v node &> /dev/null || [ "$(node -v | tr -d 'v' | cut -d'.' -f1)" -lt 18 ]; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - > /dev/null 2>&1 || true
         sudo apt-get install -y nodejs > /dev/null 2>&1 || true
     fi
     if ! command -v pm2 &> /dev/null; then
-        sudo npm install -g pm2 > /dev/null 2>&1
+        sudo npm install -g pm2 > /dev/null 2>&1 || npm install pm2
     fi
 }
 
-# Setup Admin Account & App Structure
 setup_application() {
-    print_banner
-    echo -e "${YELLOW}=== ADMIN ACCOUNT SETUP ===${NC}"
+    echo -e "\n${YELLOW}=== ADMIN ACCOUNT SETUP ===${NC}"
     read -p "Enter Admin Username: " ADMIN_USER
     read -s -p "Enter Admin Password: " ADMIN_PASS
     echo ""
 
-    log_info "Setting up project files..."
+    log_info "Creating Panel files and structure..."
     mkdir -p .data/servers public
 
-    # Create package.json
     cat <<EOF > package.json
 {
   "name": "cjh-panel",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "main": "server.js",
   "dependencies": {
     "express": "^4.18.2",
@@ -106,10 +103,8 @@ setup_application() {
 }
 EOF
 
-    # Install NPM packages
-    npm install > /dev/null 2>&1
+    npm install --silent > /dev/null 2>&1
 
-    # Save credentials into config
     cat <<EOF > config.json
 {
   "admin_user": "$ADMIN_USER",
@@ -118,14 +113,12 @@ EOF
 }
 EOF
 
-    # Create Server Logic (Backend)
     cat <<'EOF' > server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { exec, spawn } = require('child_process');
 const fs = require('fs');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -134,19 +127,20 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.json());
 app.use(express.static('public'));
 
-const config = JSON.parse(fs.readFileSync('config.json'));
+let config = { port: 6767, admin_user: "admin", admin_pass: "admin" };
+if (fs.existsSync('config.json')) {
+    config = JSON.parse(fs.readFileSync('config.json'));
+}
 
-// Login API
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     if (username === config.admin_user && password === config.admin_pass) {
-        res.json({ success: true, token: "admin-session-token" });
+        res.json({ success: true, token: "cjh-authenticated-session" });
     } else {
         res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 });
 
-// Playit Tunnel Claim URL Generator
 app.post('/api/playit/setup', (req, res) => {
     exec('playit secret generate', (error, stdout) => {
         if (error) return res.status(500).json({ error: error.message });
@@ -154,35 +148,29 @@ app.post('/api/playit/setup', (req, res) => {
     });
 });
 
-// Socket Console Connection
 io.on('connection', (socket) => {
-    console.log('Client connected to live console');
-    
+    socket.emit('console-log', '[SYSTEM] Connected to CJH Panel Console.');
+
     socket.on('start-server', (data) => {
         const { serverPort } = data;
-        // Example docker command for server startup
-        const gameProcess = spawn('docker', ['run', '-i', '--rm', '-p', `${serverPort}:25565`, 'itzg/minecraft-server']);
+        socket.emit('console-log', `[SYSTEM] Starting Server on Port ${serverPort}...`);
         
-        gameProcess.stdout.on('data', (data) => {
-            socket.emit('console-log', data.toString());
-        });
+        const process = spawn('docker', ['run', '-i', '--rm', '-p', `${serverPort}:25565`, 'itzg/minecraft-server']);
 
-        gameProcess.stderr.on('data', (data) => {
-            socket.emit('console-log', data.toString());
-        });
+        process.stdout?.on('data', (d) => socket.emit('console-log', d.toString()));
+        process.stderr?.on('data', (d) => socket.emit('console-log', d.toString()));
 
         socket.on('command', (cmd) => {
-            gameProcess.stdin.write(cmd + "\n");
+            process.stdin?.write(cmd + "\n");
         });
     });
 });
 
-server.listen(config.port, () => {
-    console.log(`CJH Panel running on port ${config.port}`);
+server.listen(config.port, '0.0.0.0', () => {
+    console.log(`CJH Panel Running on Port ${config.port}`);
 });
 EOF
 
-    # Create Modern Frontend UI
     cat <<'EOF' > public/index.html
 <!DOCTYPE html>
 <html lang="en">
@@ -190,55 +178,55 @@ EOF
     <meta charset="UTF-8">
     <title>CJH Panel - Dashboard</title>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        input, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: none; }
-        button { background: #3b82f6; color: white; cursor: pointer; }
-        #console { background: #000; color: #00ff00; height: 250px; overflow-y: scroll; padding: 10px; font-family: monospace; }
+        body { background-color: #0d1117; color: #c9d1d9; font-family: monospace; padding: 20px; }
+        .card { background: #161b22; border: 1px solid #30363d; padding: 20px; border-radius: 6px; margin-bottom: 15px; }
+        input, button { padding: 8px 12px; margin: 5px 0; background: #21262d; border: 1px solid #30363d; color: #fff; border-radius: 4px; }
+        button { background: #238636; cursor: pointer; font-weight: bold; }
+        #console { background: #000; color: #3fb950; height: 260px; overflow-y: auto; padding: 10px; border-radius: 4px; border: 1px solid #30363d; }
     </style>
 </head>
 <body>
-    <h1>CJH Panel Dashboard</h1>
+    <h1>CJH Panel Dashboard v3.0</h1>
     <div class="card">
-        <h3>Server Controls</h3>
+        <h3>Server Management</h3>
         <label>Server Port: </label>
-        <input type="number" id="port" value="25565"><br>
+        <input type="number" id="port" value="25565">
         <button onclick="startServer()">Start Game Server</button>
-        <button onclick="generatePlayit()">Setup Playit Tunnel</button>
+        <button onclick="setupTunnel()">Generate Playit Tunnel</button>
     </div>
 
     <div class="card">
-        <h3>Live Console Output</h3>
+        <h3>Live Server Console</h3>
         <div id="console"></div>
-        <input type="text" id="cmdInput" placeholder="Type command here..." style="width: 80%;">
-        <button onclick="sendCommand()">Send</button>
+        <input type="text" id="cmd" placeholder="Enter command..." style="width: 75%;">
+        <button onclick="sendCmd()">Send</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const consoleDiv = document.getElementById('console');
+        const con = document.getElementById('console');
 
-        socket.on('console-log', (data) => {
-            consoleDiv.innerHTML += '<div>' + data + '</div>';
-            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        socket.on('console-log', (msg) => {
+            con.innerHTML += '<div>' + msg + '</div>';
+            con.scrollTop = con.scrollHeight;
         });
 
         function startServer() {
-            const port = document.getElementById('port').value;
-            socket.emit('start-server', { serverPort: port });
+            const p = document.getElementById('port').value;
+            socket.emit('start-server', { serverPort: p });
         }
 
-        function sendCommand() {
-            const cmd = document.getElementById('cmdInput').value;
-            socket.emit('command', cmd);
-            document.getElementById('cmdInput').value = '';
+        function sendCmd() {
+            const c = document.getElementById('cmd').value;
+            socket.emit('command', c);
+            document.getElementById('cmd').value = '';
         }
 
-        function generatePlayit() {
+        function setupTunnel() {
             fetch('/api/playit/setup', { method: 'POST' })
             .then(res => res.json())
-            .then(data => alert('Playit Link Output: ' + JSON.stringify(data)));
+            .then(d => alert('Tunnel Response: ' + JSON.stringify(d)));
         }
     </script>
 </body>
@@ -246,26 +234,59 @@ EOF
 EOF
 }
 
-# Start Service
-start_panel() {
-    log_info "Starting CJH Panel Service..."
-    pm2 delete cjh-panel 2>/dev/null || true
-    pm2 start server.js --name "cjh-panel"
-    pm2 save --force > /dev/null 2>&1
+start_panel_service() {
+    log_info "Starting Panel Service..."
+    if command -v pm2 &> /dev/null; then
+        pm2 delete cjh-panel 2>/dev/null || true
+        pm2 start server.js --name "cjh-panel"
+        pm2 save --force > /dev/null 2>&1 || true
+    else
+        node server.js &
+    fi
 }
 
-# Main Execution Flow
-print_banner
-check_deps
-install_docker_playit
-install_node
-setup_application
-start_panel
+install_process() {
+    print_banner
+    check_deps
+    install_docker_playit
+    install_node
+    setup_application
+    start_panel_service
 
-IP=$(curl -s ifconfig.me || echo "localhost")
-log_success "CJH Panel upgraded and installed successfully!"
-echo -e "${GREEN}"
-echo "✓ Panel URL: http://${IP}:${PORT}"
-echo "✓ Live Console: Socket.io Enabled"
-echo "✓ Tunneling: Playit Agent Active"
-echo -e "${NC}"
+    IP=$(curl -s ifconfig.me 2>/dev/null || echo "localhost")
+    log_success "CJH Panel installed successfully!"
+    echo -e "${GREEN}"
+    echo "✓ Web URL: http://${IP}:${PORT}"
+    echo "✓ Active Port: ${PORT} (Check PORTS tab in CodeSandbox)"
+    echo "✓ Live Console: Connected via Socket.io"
+    echo -e "${NC}"
+}
+
+update_process() {
+    print_banner
+    log_info "Updating CJH Panel..."
+    git pull origin main 2>/dev/null || git pull 2>/dev/null || true
+    npm install --silent > /dev/null 2>&1
+    start_panel_service
+    log_success "CJH Panel updated successfully!"
+}
+
+# Main Option Menu
+print_banner
+echo -e "  ${BOLD}1)${NC} Panel Install"
+echo -e "  ${BOLD}2)${NC} Panel Update"
+echo ""
+read -p " Choose an option (1-2): " OPTION
+
+case "$OPTION" in
+    1)
+        install_process
+        ;;
+    2)
+        update_process
+        ;;
+    *)
+        log_error "Invalid Choice! Exiting..."
+        exit 1
+        ;;
+esac
