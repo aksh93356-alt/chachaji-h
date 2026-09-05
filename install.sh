@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================
-# CJH PANEL v4.5 - Cloud Execution Fix
+# CJH PANEL v4.5 - Auto Node/NPM Installer & Cloud Fix
 # =========================================================
 
 set -e
@@ -39,6 +39,27 @@ fi
 
 case $OPTION in
     1)
+        # ----------------------------------------------------
+        # Node.js and NPM Environment Check & Auto-Install
+        # ----------------------------------------------------
+        if ! command -v npm &> /dev/null; then
+            echo -e "${YELLOW}[WARN] Node.js/NPM not found. Installing Node.js automatically...${NC}"
+            if command -v apt-get &> /dev/null; then
+                sudo apt-get update -y > /dev/null 2>&1 || true
+                sudo apt-get install -y nodejs npm > /dev/null 2>&1 || true
+            elif command -v yum &> /dev/null; then
+                sudo yum install -y nodejs npm > /dev/null 2>&1 || true
+            elif command -v apk &> /dev/null; then
+                sudo apk add --no-cache nodejs npm > /dev/null 2>&1 || true
+            fi
+        fi
+
+        # Re-check if npm is available after attempting auto-install
+        if ! command -v npm &> /dev/null; then
+            echo -e "${RED}[ERROR] Could not automatically install npm. Please install Node.js/npm manually in your environment.${NC}"
+            exit 1
+        fi
+
         echo -e "\n${CYAN}=== ADMIN ACCOUNT SETUP ===${NC}"
 
         get_input() {
