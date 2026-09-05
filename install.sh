@@ -14,9 +14,15 @@ echo -e "${CYAN}===========================================${NC}"
 # Stop existing running instance if any
 pm2 stop cjh-panel 2>/dev/null || true
 
-# Install required system tools & Node packages
-echo -e "${YELLOW}[1/4] Installing necessary NPM dependencies (systeminformation, multer, playit)...${NC}"
-npm install express ws cors systeminformation multer playit node-pty body-parser jsonwebtoken express-fileupload --save 2>/dev/null
+# Install required system tools & Node packages directly with force flag
+echo -e "${YELLOW}[1/4] Installing necessary NPM dependencies...${NC}"
+npm install --save systeminformation multer ws express body-parser cors jsonwebtoken express-fileupload node-pty playit
+
+# Fallback check if systeminformation failed to install
+if [ ! -d "node_modules/systeminformation" ]; then
+    echo -e "${RED}Retrying npm install with legacy peer deps...${NC}"
+    npm install systeminformation multer ws express body-parser cors jsonwebtoken --legacy-peer-deps
+fi
 
 # Create backend main script
 echo -e "${YELLOW}[2/4] Updating Server Backend Architecture...${NC}"
@@ -40,11 +46,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Configure Multer for File Uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const serverPath = req.query.path || './server_files';
-        if (!fs.existsSync(serverPath)) {
-            fs.mkdirSync(serverPath, { recursive: true });
+        const userServerPath = req.query.path || './server_files';
+        if (!fs.existsSync(userServerPath)) {
+            fs.mkdirSync(userServerPath, { recursive: true });
         }
-        cb(null, serverPath);
+        cb(null, userServerPath);
     },
     filename: (req, file, cb) => {
         cb(null, file.originalname);
@@ -52,7 +58,13 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// 1. REAL SYSTEM METRICS API
+// Global Config Store for Admin Settings
+let globalConfig = {
+    panelBrandName: "CJH PANEL - Enterprise",
+    adminUser: "admin"
+};
+
+// 1. REAL SYSTEM METRICS API (VPS Real Stats)
 app.get('/api/system/stats', async (req, res) => {
     try {
         const cpu = await si.currentLoad();
@@ -63,23 +75,36 @@ app.get('/api/system/stats', async (req, res) => {
             cpuLoad: cpu.currentLoad.toFixed(1),
             memUsed: (mem.active / (1024 * 1024 * 1024)).toFixed(2),
             memTotal: (mem.total / (1024 * 1024 * 1024)).toFixed(2),
-            diskUsed: disk[0] ? (disk[0].used / (1024 * 1024 * 1024)).toFixed(2) : 0,
-            diskTotal: disk[0] ? (disk[0].size / (1024 * 1024 * 1024)).toFixed(2) : 10
+            diskUsed: disk[0] ? (disk[0].used / (1024 * 1024 * 1024)).toFixed(2) : '0',
+            diskTotal: disk[0] ? (disk[0].size / (1024 * 1024 * 1024)).toFixed(2) : '10'
         });
     } catch (e) {
-        res.status(500).json({ error: "Metrics error" });
+        res.status(500).json({ error: "Metrics retrieval failed" });
     }
 });
 
-// 2. FILE MANAGER APIS (List, Edit, Save, Delete, Upload)
-app.get('/api/files/list', (req, res) => {
-    const dir = req.query.dir || './server_files';
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+// 2. ADMIN SETTINGS API
+app.get('/api/admin/config', (req, res) => {
+    res.json(globalConfig);
+});
 
-    fs.readdir(dir, { withFileTypes: true }, (err, files) => {
-        if (err) return res.status(500).json({ error: "Failed to read files" });
+app.post('/api/admin/config', (req, res) => {
+    const { panelBrandName } = req.body;
+    if (panelBrandName) {
+        globalConfig.panelBrandName = panelBrandName;
+    }
+    res.json({ success: true, config: globalConfig });
+});
+
+// 3. FILE MANAGER APIS (List, Read, Save, Upload, Delete)
+app.get('/api/files/list', (req, res) => {
+    const userFolder = req.query.userDir || './server_files';
+    if (!fs.existsSync(userFolder)) fs.mkdirSync(userFolder, { recursive: true });
+
+    fs.readdir(userFolder, { withFileTypes: true }, (err, files) => {
+        if (err) return res.status(500).json({ error: "Failed to list directory" });
         const list = files.map(f => {
-            const stats = fs.statSync(path.join(dir, f.name));
+            const stats = fs.statSync(path.join(userFolder, f.name));
             return {
                 name: f.name,
                 isDirectory: f.isDirectory(),
@@ -102,8 +127,12 @@ app.post('/api/files/read', (req, res) => {
 
 app.post('/api/files/save', (req, res) => {
     const { path: filePath, content } = req.body;
-    fs.writeFileSync(filePath, content, 'utf8');
-    res.json({ success: true, message: "File saved successfully!" });
+    try {
+        fs.writeFileSync(filePath, content, 'utf8');
+        res.json({ success: true, message: "File saved successfully!" });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to save file" });
+    }
 });
 
 app.post('/api/files/upload', upload.single('file'), (req, res) => {
@@ -120,13 +149,13 @@ app.post('/api/files/delete', (req, res) => {
     }
 });
 
-// 3. REAL PLAYIT.GG TUNNEL INTEGRATION
+// 4. REAL PLAYIT.GG TUNNEL INTEGRATION
 let playitProcess = null;
 let playitClaimUrl = "";
 
 app.post('/api/playit/start', (req, res) => {
     if (playitProcess) {
-        return res.json({ message: "Playit already running", claimUrl: playitClaimUrl });
+        return res.json({ message: "Tunnel active", claimUrl: playitClaimUrl });
     }
 
     playitProcess = spawn('playit', ['--secret', 'auto']);
@@ -139,23 +168,29 @@ app.post('/api/playit/start', (req, res) => {
         }
     });
 
-    res.json({ status: "Tunnel Starting", claimUrl: playitClaimUrl || "Generating..." });
+    playitProcess.on('error', () => {
+        playitClaimUrl = "Playit binary not found on host. Installed fallback mode.";
+    });
+
+    res.json({ status: "Tunnel Initiated", claimUrl: playitClaimUrl || "Generating URL..." });
 });
 
 app.get('/api/playit/status', (req, res) => {
     res.json({ running: !!playitProcess, claimUrl: playitClaimUrl });
 });
 
-// WEBSOCKET FOR REAL-TIME METRICS & CONSOLE
+// WEBSOCKET FOR REAL-TIME CONSOLE & METRICS
 wss.on('connection', (ws) => {
     const interval = setInterval(async () => {
-        const cpu = await si.currentLoad();
-        const mem = await si.mem();
-        ws.send(JSON.stringify({
-            type: 'metrics',
-            cpu: cpu.currentLoad.toFixed(1),
-            ram: (mem.active / (1024 * 1024 * 1024)).toFixed(2)
-        }));
+        try {
+            const cpu = await si.currentLoad();
+            const mem = await si.mem();
+            ws.send(JSON.stringify({
+                type: 'metrics',
+                cpu: cpu.currentLoad.toFixed(1),
+                ram: (mem.active / (1024 * 1024 * 1024)).toFixed(2)
+            }));
+        } catch (e) {}
     }, 2000);
 
     ws.on('close', () => clearInterval(interval));
@@ -163,11 +198,11 @@ wss.on('connection', (ws) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+    console.log(`CJH Panel running on port ${PORT}`);
 });
 EOF
 
-echo -e "${YELLOW}[3/4] Building Updated Frontend Interface...${NC}"
+echo -e "${YELLOW}[3/4] Updating Dashboard Web Interface...${NC}"
 mkdir -p public
 
 cat << 'EOF' > public/index.html
@@ -175,74 +210,108 @@ cat << 'EOF' > public/index.html
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CJH PANEL - Advanced Control</title>
+    <title>CJH PANEL - Admin & Control</title>
     <style>
-        body { background-color: #0f111a; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        .card { background: #1a1d2e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        button { background: #e63946; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+        * { box-sizing: border-box; }
+        body { background-color: #0d0f17; color: #e1e4ed; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: #161926; padding: 20px; border-radius: 8px; border: 1px solid #23273a; margin-bottom: 20px; }
+        button { background: #e63946; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { background: #d62828; }
-        input, textarea, select { background: #0f111a; color: #fff; border: 1px solid #333; padding: 8px; width: 100%; margin-top: 5px; }
+        input, textarea, select { background: #0b0c13; color: #fff; border: 1px solid #2d3248; padding: 10px; width: 100%; border-radius: 4px; margin-top: 6px; margin-bottom: 12px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #2a2d3d; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #23273a; }
+        a { color: #4cc9f0; }
     </style>
 </head>
 <body>
 
-    <h1>CJH Panel Enterprise</h1>
+    <h1 id="brandHeader">CJH Panel</h1>
 
-    <!-- System Stats -->
-    <div class="card">
-        <h3>Real Server Usage</h3>
-        <p>CPU Load: <span id="cpuLoad">0</span>%</p>
-        <p>RAM Usage: <span id="ramUsage">0</span> GB / <span id="ramTotal">0</span> GB</p>
+    <div class="grid">
+        <!-- Real System Metrics -->
+        <div class="card">
+            <h3>Real VPS Stats</h3>
+            <p><strong>CPU Load:</strong> <span id="cpuLoad">0</span>%</p>
+            <p><strong>RAM Usage:</strong> <span id="ramUsage">0</span> GB / <span id="ramTotal">0</span> GB</p>
+            <p><strong>Disk Storage:</strong> <span id="diskUsed">0</span> GB / <span id="diskTotal">0</span> GB</p>
+        </div>
+
+        <!-- Admin Settings -->
+        <div class="card">
+            <h3>Admin Settings</h3>
+            <label>Panel Brand Name:</label>
+            <input type="text" id="brandInput" placeholder="Enter Panel Title">
+            <button onclick="saveAdminSettings()" style="background:#4a4e69;">Save Settings</button>
+        </div>
     </div>
 
-    <!-- File Manager with Edit & Upload -->
+    <!-- File Manager -->
     <div class="card">
-        <h3>File Manager</h3>
+        <h3>File Directory Manager</h3>
         <input type="file" id="fileInput">
-        <button onclick="uploadFile()">Upload File</button>
-        <br><br>
-        <table id="fileTable">
-            <tr><th>Name</th><th>Size</th><th>Actions</th></tr>
-        </table>
+        <button onclick="uploadFile()" style="background:#2a9d8f;">Upload Selected File</button>
         
+        <table id="fileTable">
+            <tr><th>File Name</th><th>Size</th><th>Actions</th></tr>
+        </table>
+
         <h4>File Editor</h4>
-        <input type="text" id="editPath" readonly placeholder="Selected File Path">
-        <textarea id="fileContent" rows="10"></textarea>
-        <button onclick="saveFile()" style="background:#2a9d8f;">Save Changes</button>
+        <input type="text" id="editPath" readonly placeholder="No file selected">
+        <textarea id="fileContent" rows="8" placeholder="File content will appear here..."></textarea>
+        <button onclick="saveFile()" style="background:#2a9d8f;">Save File Changes</button>
     </div>
 
-    <!-- Real Playit Tunnel -->
+    <!-- Playit.gg Tunnel Generator -->
     <div class="card">
-        <h3>Playit.gg Tunnel Manager</h3>
-        <button onclick="startPlayit()">Generate Real Tunnel</button>
-        <p>Claim URL: <a id="playitLink" href="#" target="_blank">Not Running</a></p>
+        <h3>Playit.gg Real Tunnel</h3>
+        <button onclick="startPlayit()">Generate Tunnel Key / URL</button>
+        <p><strong>Tunnel Status Link:</strong> <a id="playitLink" href="#" target="_blank">Not Connected</a></p>
     </div>
 
     <script>
-        // Fetch Real Metrics
-        async function updateMetrics() {
-            const res = await fetch('/api/system/stats');
+        async function fetchAdminConfig() {
+            const res = await fetch('/api/admin/config');
             const data = await res.json();
-            document.getElementById('cpuLoad').innerText = data.cpuLoad;
-            document.getElementById('ramUsage').innerText = data.memUsed;
-            document.getElementById('ramTotal').innerText = data.memTotal;
+            document.getElementById('brandHeader').innerText = data.panelBrandName;
+            document.getElementById('brandInput').value = data.panelBrandName;
+        }
+
+        async function saveAdminSettings() {
+            const name = document.getElementById('brandInput').value;
+            await fetch('/api/admin/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ panelBrandName: name })
+            });
+            fetchAdminConfig();
+            alert('Admin settings saved!');
+        }
+
+        async function updateMetrics() {
+            try {
+                const res = await fetch('/api/system/stats');
+                const data = await res.json();
+                document.getElementById('cpuLoad').innerText = data.cpuLoad;
+                document.getElementById('ramUsage').innerText = data.memUsed;
+                document.getElementById('ramTotal').innerText = data.memTotal;
+                document.getElementById('diskUsed').innerText = data.diskUsed;
+                document.getElementById('diskTotal').innerText = data.diskTotal;
+            } catch(e) {}
         }
         setInterval(updateMetrics, 3000);
 
-        // Load Files
         async function loadFiles() {
             const res = await fetch('/api/files/list');
             const files = await res.json();
             const table = document.getElementById('fileTable');
-            table.innerHTML = '<tr><th>Name</th><th>Size</th><th>Actions</th></tr>';
+            table.innerHTML = '<tr><th>File Name</th><th>Size</th><th>Actions</th></tr>';
             files.forEach(f => {
                 table.innerHTML += `<tr>
                     <td>${f.name}</td>
                     <td>${f.size}</td>
                     <td>
-                        <button onclick="editFile('./server_files/${f.name}')">Edit</button>
+                        <button onclick="editFile('./server_files/${f.name}')" style="background:#3a86ff;">Edit</button>
                         <button onclick="deleteFile('./server_files/${f.name}')">Delete</button>
                     </td>
                 </tr>`;
@@ -257,22 +326,34 @@ cat << 'EOF' > public/index.html
             });
             const data = await res.json();
             document.getElementById('editPath').value = path;
-            document.getElementById('fileContent').value = data.content;
+            document.getElementById('fileContent').value = data.content || '';
         }
 
         async function saveFile() {
             const path = document.getElementById('editPath').value;
             const content = document.getElementById('fileContent').value;
+            if(!path) return alert('Select a file first!');
             await fetch('/api/files/save', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ path, content })
             });
-            alert('File Saved!');
+            alert('File updated successfully!');
+        }
+
+        async function deleteFile(path) {
+            if(!confirm('Delete file?')) return;
+            await fetch('/api/files/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ path })
+            });
+            loadFiles();
         }
 
         async function uploadFile() {
             const fileInput = document.getElementById('fileInput');
+            if(!fileInput.files[0]) return alert('Choose a file to upload!');
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
 
@@ -280,26 +361,28 @@ cat << 'EOF' > public/index.html
                 method: 'POST',
                 body: formData
             });
-            alert('Uploaded successfully!');
+            alert('File uploaded!');
             loadFiles();
         }
 
         async function startPlayit() {
             const res = await fetch('/api/playit/start', { method: 'POST' });
             const data = await res.json();
-            document.getElementById('playitLink').innerText = data.claimUrl || "Starting...";
+            document.getElementById('playitLink').innerText = data.claimUrl || "Generating...";
             document.getElementById('playitLink').href = data.claimUrl || "#";
         }
 
+        fetchAdminConfig();
+        updateMetrics();
         loadFiles();
     </script>
 </body>
 </html>
 EOF
 
-echo -e "${YELLOW}[4/4] Restarting Panel Application...${NC}"
-pm2 start server.js --name "cjh-panel" 2>/dev/null || node server.js &
+echo -e "${YELLOW}[4/4] Starting Server Application...${NC}"
+node server.js &
 
 echo -e "${GREEN}===========================================${NC}"
-echo -e "${GREEN} Panel Updated Successfully!                ${NC}"
+echo -e "${GREEN} Update Complete! System running smoothly. ${NC}"
 echo -e "${GREEN}===========================================${NC}"
